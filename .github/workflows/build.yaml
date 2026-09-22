@@ -39,7 +39,7 @@ jobs:
       - name: Site tests
         run: npm run test:site
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         with:
           name: site
           path: public
