@@ -18,19 +18,20 @@ function head(html) {
 
 test('the home page links the favicons supplied in static/', (t) => {
   const h = head(home);
+  // The production build is minified: attribute quotes and the self-closing slash go.
   assert.match(
     h,
-    /<link rel="icon" href="\/favicon\.ico" \/>/,
+    /<link rel="?icon"? href="?\/favicon\.ico"?( \/)?>/,
     'links favicon.ico',
   );
   assert.match(
     h,
-    /<link rel="icon" href="\/favicon\.svg" type="image\/svg\+xml" \/>/,
+    /<link rel="?icon"? href="?\/favicon\.svg"? type="?image\/svg\+xml"?( \/)?>/,
     'links favicon.svg',
   );
   assert.match(
     h,
-    /<link rel="apple-touch-icon" href="\/apple-touch-icon\.png" \/>/,
+    /<link rel="?apple-touch-icon"? href="?\/apple-touch-icon\.png"?( \/)?>/,
     'links apple-touch-icon.png',
   );
   t.diagnostic('all three discovered favicon links present');
