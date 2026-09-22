@@ -21,7 +21,7 @@ These are accepted by every command and can also come from the environment:
 | --- | --- | --- |
 | `--registry REGISTRY` | `NSPAWN_REGISTRY` | Registry (hub) for image references without a host part. |
 | `--ca-cert FILE` | `NSPAWN_CA_CERT` | Extra CA certificate (PEM) to trust when talking to the registry. |
-| `--config FILE` | `NSPAWN_CONFIG` | Configuration file; see [Configuration](../configuration/). |
+| `--config FILE` | `NSPAWN_CONFIG` | Configuration file; see [Configuration](/docs/configuration/). |
 | `-h`, `--help` | | Help. |
 | `-V`, `--version` | | Version. |
 

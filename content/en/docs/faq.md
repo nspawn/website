@@ -19,7 +19,7 @@ are public.
 Yes. nspawn drives systemd-nspawn through systemd-machined and the systemd
 service manager, so the host needs both, with cgroup v2. The images on the hub
 contain systemd as well; images without an init system run as
-[apps](../machines/#app-machines).
+[apps](/docs/machines/#app-machines).
 
 ## Is this docker?
 
@@ -37,7 +37,7 @@ any other registry image. Since it has no init system, it is installed as an
 app image: its entrypoint runs under nspawn's stub init, on the bridge, with
 `-p` for its ports. Docker Hub limits anonymous pulls per address;
 `sudo nspawn login docker.io -u USER` lifts that. See
-[Getting started](../getting-started/#an-app-from-docker-hub).
+[Getting started](/docs/getting-started/#an-app-from-docker-hub).
 
 ## Why do most commands need root?
 
@@ -70,7 +70,7 @@ network namespace. Neither systemd-networkd nor NetworkManager on the host is
 involved; only `--network veth` depends on systemd-networkd. With firewalld the
 bridge is put in the trusted zone, and on hosts where docker or ufw set the
 forward policy to drop, nspawn adds the exception the bridge needs. See
-[Firewalls](../networking/#firewalls).
+[Firewalls](/docs/networking/#firewalls).
 
 ## What is the difference between exec and shell?
 
@@ -85,13 +85,13 @@ app.
 With volumes, as in docker: `-v /srv/data:/data` mounts a host directory,
 `-v pgdata:/var/lib/postgresql` a named volume that nspawn keeps under
 `/var/lib/nspawn/volumes/pgdata`. Named volumes survive `images rm`. See
-[Volumes](../machines/#volumes).
+[Volumes](/docs/machines/#volumes).
 
 ## Can I run several machines from one image?
 
 Yes: `sudo nspawn create fedora-44 db` makes another machine that shares the
 layers of `fedora-44` and has a writable layer, an address, ports and settings
-of its own. See [More machines from one image](../images/#more-machines-from-one-image).
+of its own. See [More machines from one image](/docs/images/#more-machines-from-one-image).
 
 ## Can a machine start at boot?
 

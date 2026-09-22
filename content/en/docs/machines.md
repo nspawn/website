@@ -31,7 +31,7 @@ sudo nspawn start NAME [--network bridge|veth|host] [-p HOST:CONTAINER[/udp]]...
 ```
 
 `start` regenerates `/etc/systemd/nspawn/NAME.nspawn` from the machine's
-record, sets up the [network](../networking/) it is configured for, starts the
+record, sets up the [network](/docs/networking/) it is configured for, starts the
 unit through systemd and waits up to 30 seconds for the machine to register
 with machined. For a booted machine it then waits, up to 20 more seconds, until
 the machine's own systemd is listening, so that a command can follow right
@@ -43,7 +43,7 @@ Everything given to `start` is remembered for the machine, so a plain
 variables and the volumes of the last run:
 
 - `--network` switches the machine between the bridge, a veth pair and the
-  host's network; see [Networking](../networking/).
+  host's network; see [Networking](/docs/networking/).
 - `-p HOST:CONTAINER[/udp]` publishes a port on the host, like docker. It needs
   the bridge network; `-p none` forgets all published ports.
 - `--entrypoint`, `-e` and the arguments after `--` change what an **app**

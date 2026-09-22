@@ -20,7 +20,7 @@ machines with a docker-like workflow:
   `login` keeps credentials per registry, the way `docker login` does.
 - Layers are downloaded once, verified against their digests and shared between
   the machines that use them. A machine's root file system is assembled from
-  them by a [backend](../images/#backends): an overlayfs mount, a native
+  them by a [backend](/docs/images/#backends): an overlayfs mount, a native
   `systemd.mstack` directory, or a flat copy. `create` makes more machines from
   an image that is already local, without touching the registry.
 - Machines are started, inspected and stopped through the D-Bus APIs of
@@ -56,7 +56,7 @@ nspawn tells two kinds of images apart when it installs them:
 The kind is detected at `pull` or `build` time and can be forced with
 `--mode boot` or `--mode app`. Both kinds join the bridge network, are listed
 by `ps`, stopped by `stop` and read by `logs`; the differences are described
-in [Machines](../machines/).
+in [Machines](/docs/machines/).
 
 ## Networking
 
@@ -65,7 +65,7 @@ itself: fixed addresses, NAT, published ports (`-p 8080:80`) and a generated
 `/etc/hosts` with the names of the other machines. `--network host` shares the
 host's network instead, and `--network veth` gives booted machines the classic
 systemd-nspawn virtual ethernet pair configured by systemd-networkd. See
-[Networking](../networking/).
+[Networking](/docs/networking/).
 
 ## The pieces
 

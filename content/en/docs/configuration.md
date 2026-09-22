@@ -73,7 +73,7 @@ NSPAWN_REGISTRY=hub.nspawn.test:8443 NSPAWN_CA_CERT=/etc/zot/ca.crt nspawn hub l
 
 `nspawn login` keeps registry credentials in `/etc/nspawn/auth.json`, and
 credentials left by `docker login` or `podman login` are picked up from their
-usual files. See [Registries and credentials](../images/#registries-and-credentials).
+usual files. See [Registries and credentials](/docs/images/#registries-and-credentials).
 
 ## Per-machine choices
 

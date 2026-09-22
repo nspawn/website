@@ -22,7 +22,7 @@ is handy at boot) nspawn creates the bridge with the first address of the
 subnet, enables IPv4 forwarding and installs the nftables table `ip nspawn`
 with masquerading for the subnet. The defaults are the bridge `nspawn0` and the
 subnet `10.99.0.0/24`; both, and the DNS servers, can be changed in
-[the configuration file](../configuration/). An interface that already has
+[the configuration file](/docs/configuration/). An interface that already has
 that name is only taken over when it is a bridge nspawn made, or an empty one;
 `bridge = "docker0"` is refused rather than acted on. Nothing else on the host
 is touched, so it works the same with systemd-networkd, NetworkManager or no

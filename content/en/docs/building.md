@@ -97,7 +97,7 @@ tells you which `nspawn login` to run when the registry wants some it does not
 have. The blobs that are already on the registry are skipped and the manifest
 is uploaded last. A push needs a tag, not a digest, and the image's manifest
 and blobs must still be in the store (`images rm` removes them). See
-[Registries and credentials](../images/#registries-and-credentials).
+[Registries and credentials](/docs/images/#registries-and-credentials).
 
 ## The hub images
 

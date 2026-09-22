@@ -13,6 +13,6 @@ machines the way docker manages containers: images come from an OCI registry
 through the D-Bus APIs of systemd-machined and systemd. This documentation
 describes nspawn {{% param version %}}.
 
-If you are new, start with the [overview](overview/) and then
-[get started](getting-started/). The [command reference](reference/) lists
+If you are new, start with the [overview](/docs/overview/) and then
+[get started](/docs/getting-started/). The [command reference](/docs/reference/) lists
 every command and option.

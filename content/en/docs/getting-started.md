@@ -24,7 +24,7 @@ description: >-
 - **D-Bus inside a booted machine** for `shell`, which uses machined's login
   session; the hub images have it. `exec` enters the machine's namespaces and
   needs nothing inside.
-- **mkosi** only if you want to [build images](../building/).
+- **mkosi** only if you want to [build images](/docs/building/).
 
 ## Installation
 
@@ -138,16 +138,16 @@ seconds if it is still there; `-t` changes the grace period.
 
 Docker Hub limits anonymous pulls per address. `sudo nspawn login docker.io -u USER`
 keeps your credentials for that registry only; see
-[Registries and credentials](../images/#registries-and-credentials).
+[Registries and credentials](/docs/images/#registries-and-credentials).
 
 ## Next steps
 
-- [Images and the hub](../images/): references, search, credentials, backends,
+- [Images and the hub](/docs/images/): references, search, credentials, backends,
   boot and app detection, `create`, where things are stored.
-- [Machines](../machines/): `start`, `stop`, `exec`, `shell`, `logs`, `ps`,
+- [Machines](/docs/machines/): `start`, `stop`, `exec`, `shell`, `logs`, `ps`,
   entrypoints, environment and volumes.
-- [Networking](../networking/): the bridge, published ports, veth and host
+- [Networking](/docs/networking/): the bridge, published ports, veth and host
   networking, firewalls.
-- [Building images](../building/): `build` and `push`.
-- [Configuration](../configuration/): `/etc/nspawn/nspawn.toml`, environment
+- [Building images](/docs/building/): `build` and `push`.
+- [Configuration](/docs/configuration/): `/etc/nspawn/nspawn.toml`, environment
   variables and flags.

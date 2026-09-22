@@ -13,7 +13,7 @@ description: >-
 An image reference has the form `[registry/]repository[:tag|@digest]`:
 
 - Without a registry part, the configured registry is used. Out of the box that
-  is the hub, `hub.nspawn.org`; the [configuration](../configuration/) page
+  is the hub, `hub.nspawn.org`; the [configuration](/docs/configuration/) page
   shows how to change it. The first path component counts as a registry when it
   looks like a host, for example `docker.io/library/nginx` or
   `registry.example:5000/team/app`.
@@ -163,7 +163,7 @@ After assembling, nspawn looks at the root file system and at the OCI config:
   with the config's environment, working directory, user and stop signal.
 
 `--mode boot` or `--mode app` overrides the detection. The mode is recorded with
-the image; [Machines](../machines/) explains how it changes `start`, `exec`,
+the image; [Machines](/docs/machines/) explains how it changes `start`, `exec`,
 `shell` and `stop`.
 
 ## More machines from one image
@@ -229,7 +229,7 @@ Named volumes are not deleted: they may belong to another machine.
 | `/var/lib/nspawn/volumes/NAME` | A named volume (`-v NAME:/inside`). |
 | `/etc/systemd/nspawn/NAME.nspawn` | The settings nspawn generates for a machine; regenerated at every `start`. |
 | `/etc/systemd/system/systemd-nspawn@NAME.service.d/` | The drop-in with the unit hooks and, for an overlay machine, the one that requires its mount unit. The mount unit itself is next to them in `/etc/systemd/system/`. |
-| `/etc/nspawn/nspawn.toml` | The [configuration file](../configuration/), optional. |
+| `/etc/nspawn/nspawn.toml` | The [configuration file](/docs/configuration/), optional. |
 | `/etc/nspawn/auth.json` | The credentials `login` stored, mode 0600. |
 | `/run/netns/nspawn-NAME` | The network namespace of a running app machine on the bridge. |
 
