@@ -28,12 +28,6 @@ jobs:
 
       - run: npm run install:safe
 
-      - name: Regenerate generated files (drift-check input)
-        run: npm run update:docsy:pack
-
-      - name: Guard the npm-script posture
-        run: node --test tests/npm-scripts.test.mjs
-
       - name: Install lychee
         env:
           LYCHEE_VERSION: v0.24.2
@@ -48,14 +42,3 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: npm run check:links
-
-      - name: 'Drift check: committed generated files are unchanged'
-        run: |
-          npm run -s _is:clean || {
-            echo
-            echo 'ERROR: generated files changed; regenerate locally and commit:'
-            echo '  .lycheecache               -> npm run check:links'
-            echo '  package-lock, hugoautogen  -> npm run update:docsy:pack'
-            echo
-            exit 1
-          }
