@@ -1,77 +1,129 @@
 ---
-title: Goldydocs
+title: nspawn
+description: Docker-like management of systemd-nspawn machines
+params:
+  body_class: td-navbar-links-all-active
 ---
 
-{{< blocks/cover title="Welcome to Goldydocs: A Docsy Example Project!" image_anchor="top" height="full" >}}
-<a class="btn btn-lg btn-primary me-3 mb-4" href="/docs/">
-  Learn More <i class="fas fa-arrow-alt-circle-right ms-2"></i>
-</a>
-<a class="btn btn-lg btn-secondary me-3 mb-4" href="https://github.com/google/docsy-example">
-  Download <i class="fab fa-github ms-2 "></i>
-</a>
-<p class="lead mt-5">Porridge temperature assessment &mdash; in the cloud!</p>
-{{< blocks/link-down color="info" >}}
-{{< /blocks/cover >}}
+{{% blocks/cover title="nspawn" height="max td-below-navbar" color="primary" %}}
 
+<!-- prettier-ignore -->
+Docker-like management of systemd-nspawn machines.
+Images from an OCI hub, shared layers, and systemd all the way down.
+{.display-6}
 
-{{% blocks/lead color="primary" %}}
-Goldydocs provides a single web UI providing visibility into porridge
-temperature, chair size, and bed softness metrics! You can even find out who's
-been eating **your** porridge.
+<!-- prettier-ignore -->
+<div class="td-cta-buttons my-5">
+  <a {{% _param btn-lg primary %}} href="docs/getting-started/">
+    Get started
+  </a>
+  <a {{% _param btn-lg secondary %}}
+    href="{{% param github_project_repo %}}"
+    target="_blank" rel="noopener noreferrer">
+    Source on GitHub
+    {{% _param FA brands github "" %}}
+  </a>
+</div>
 
-(Sadly, Goldydocs isn't a real project, but you can use this site as an example
-to create your own real websites with [Docsy](https://docsy.dev))
+{{% blocks/link-down color="info" %}}
+
+{{% /blocks/cover %}}
+
+{{% blocks/lead color="white" %}}
+
+nspawn pulls OCI images from [the hub](docs/images/#the-hub) at
+`hub.nspawn.org`, from Docker Hub or from any other registry, stores them as
+shared layers and starts, inspects and stops the machines through the D-Bus
+APIs of systemd-machined and systemd itself. No daemon of its own, no
+`machinectl`, no `importctl`: the machines are ordinary
+`systemd-nspawn@.service` units that the rest of the system already knows.
+
 {{% /blocks/lead %}}
 
+{{% blocks/section color="primary" type="row" %}}
 
-{{% blocks/section color="dark" type="row" %}}
-{{% blocks/feature icon="fa-lightbulb" title="New chair metrics!" %}}
-The Goldydocs UI now shows chair size metrics by default.
+{{% blocks/feature title="Images from any registry" icon="fa-cloud-arrow-down" url="docs/images/" url_text="Images and the hub" %}}
 
-Please follow this space for updates!
+`nspawn search fedora` looks on the hub and on Docker Hub at once;
+`nspawn pull` fetches from either, and `login` keeps credentials per registry.
+Layers are downloaded once, verified against their digests and shared between
+machines. Remove an image and the layers nobody uses go with it.
+
 {{% /blocks/feature %}}
 
+{{% blocks/feature title="Machines and apps" icon="fa-server" url="docs/machines/" url_text="Running machines" %}}
 
-{{% blocks/feature icon="fab fa-github" title="Contributions welcome!" url="https://github.com/google/docsy-example" %}}
-We do a [Pull Request](https://github.com/google/docsy-example/pulls) contributions workflow on **GitHub**. New users are always welcome!
+Images that ship systemd boot like `machinectl start` does. Anything else, for
+example a docker image, runs its entrypoint as an app under a stub init, with
+`-p`, `-e`, `-v` and `--entrypoint` as in docker. `ps`, `exec`, `shell`,
+`logs` and `stop` work the same on both.
+
 {{% /blocks/feature %}}
 
+{{% blocks/feature title="Networking that works everywhere" icon="fa-network-wired" url="docs/networking/" url_text="Networking" %}}
 
-{{% blocks/feature icon="fab fa-twitter" title="Follow us on Twitter!" url="https://twitter.com/docsydocs" %}}
-For announcement of latest features etc.
-{{% /blocks/feature %}}
+A docker0 style bridge with NAT, fixed addresses, published ports and machine
+names that resolve, managed by nspawn itself. It behaves the same whether the
+host runs systemd-networkd, NetworkManager, docker, firewalld or nothing at
+all.
 
-
-{{% /blocks/section %}}
-
-
-{{% blocks/section %}}
-This is the second section
-{.h1 .text-center}
-{{% /blocks/section %}}
-
-
-{{% blocks/section type="row" %}}
-
-{{% blocks/feature icon="fab fa-app-store-ios" title="Download **from AppStore**" %}}
-Get the Goldydocs app!
-{{% /blocks/feature %}}
-
-{{% blocks/feature icon="fab fa-github" title="Contributions welcome!"
-    url="https://github.com/google/docsy-example" %}}
-We do a [Pull Request](https://github.com/google/docsy-example/pulls)
-contributions workflow on **GitHub**. New users are always welcome!
-{{% /blocks/feature %}}
-
-{{% blocks/feature icon="fab fa-twitter" title="Follow us on Twitter!"
-    url="https://twitter.com/GoHugoIO" %}}
-For announcement of latest features etc.
 {{% /blocks/feature %}}
 
 {{% /blocks/section %}}
 
+{{% blocks/section color="white" %}}
 
-{{% blocks/section %}}
-This is the another section
-{.h1 .text-center}
+<div class="td-home-commands">
+
+## The whole tool in a screenful
+
+```shell
+nspawn hub ls                     # repositories and tags on the hub
+nspawn search fedora              # images on the hub and on Docker Hub
+sudo nspawn login docker.io -u me # credentials for a registry (the hub by default)
+sudo nspawn pull fedora:44        # download and assemble an image
+nspawn images ls                  # local images (all of them, not only ours)
+sudo nspawn start fedora-44       # boot it as a machine
+sudo nspawn create fedora-44 db   # another machine from the same image
+sudo nspawn start web -p 8080:80 -e KEY=v -v /srv/data:/data -v pgdata:/var/lib/pg
+nspawn ps                         # running machines: image, mode, command, uptime
+nspawn exec fedora-44 -- systemctl is-system-running
+nspawn shell fedora-44
+nspawn logs fedora-44             # console output; --inside reads its journal
+sudo nspawn stop fedora-44
+sudo nspawn images rm fedora-44   # also frees layers and blobs nobody uses
+
+sudo nspawn build -t team/app:1 ./app   # mkosi --format=oci, imported as an image
+nspawn push team/app:1                  # upload it; layers already there are skipped
+```
+
+</div>
+
+{{% /blocks/section %}}
+
+{{% blocks/section color="secondary" type="row" %}}
+
+{{% blocks/feature title="Build with mkosi, push anywhere" icon="fa-hammer" url="docs/building/" url_text="Building images" %}}
+
+`nspawn build` runs mkosi with `--format=oci` on a directory with a
+`mkosi.conf`, imports the result as a local image and `push` uploads it to the
+hub or to any registry you point it at.
+
+{{% /blocks/feature %}}
+
+{{% blocks/feature title="Open images" icon="fab fa-github" url="https://github.com/nspawn/mkosi-definitions" url_text="mkosi definitions" %}}
+
+Every image on the hub is built from public mkosi definitions with the
+distribution's own package manager. Read them, rebuild them, send fixes.
+
+{{% /blocks/feature %}}
+
+{{% blocks/feature title="Small and self-contained" icon="fa-feather" url="docs/overview/" url_text="How it fits together" %}}
+
+One binary, written in Rust. Its state lives under `/var/lib/nspawn`, its
+machines under `/var/lib/machines`, and everything it generates is a plain
+systemd unit or settings file you can read.
+
+{{% /blocks/feature %}}
+
 {{% /blocks/section %}}

@@ -1,0 +1,52 @@
+/*
+Project-specific styles. For details, see:
+https://www.docsy.dev/docs/content/lookandfeel/#project-style-files
+*/
+
+// Dark mode enhancements
+@import 'td/color-adjustments-dark';
+@import 'td/code-dark';
+@import 'td/extra/buttons';
+@import 'td/extra/main-container';
+
+// Links inside the primary colored blocks of the landing page.
+.td-box--primary {
+  a {
+    color: tint-color($primary, 80%) !important;
+  }
+}
+
+// The landing page cover: a gradient instead of a photo.
+.td-cover-block.-bg-primary {
+  background: linear-gradient(135deg, #0b2e3d 0%, $primary 55%, #2a8fa8 100%);
+}
+
+// Command samples on the landing page.
+.td-home-commands {
+  text-align: left;
+  max-width: 52rem;
+  margin: 0 auto;
+
+  pre {
+    font-size: 0.9rem;
+    padding: 1.25rem 1.5rem;
+    border-radius: 0.5rem;
+  }
+}
+
+// Reference tables: keep option names on one line.
+.td-content table code {
+  white-space: nowrap;
+}
+
+// Inline code inside the colored blocks of the landing page: Bootstrap's pink code color
+// is unreadable on the primary and secondary backgrounds.
+.td-box--primary,
+.td-box--secondary {
+  code {
+    color: inherit;
+    background: rgba(255, 255, 255, 0.16);
+    padding: 0.1em 0.35em;
+    border-radius: 0.25rem;
+  }
+}

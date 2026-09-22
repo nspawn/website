@@ -1,6 +1,13 @@
 /*
-
-Add styles or override variables from the theme here.
-
+Colors and Bootstrap variables of nspawn.org. Anything Bootstrap or Docsy exposes as a
+Sass variable can be overridden here; see
+https://www.docsy.dev/docs/content/lookandfeel/#project-style-files
 */
 
+$primary: #1f6f8b;
+$secondary: #2f3e46;
+$info: #5cc8d6;
+$success: #3a9d6f;
+
+$font-family-monospace: 'JetBrains Mono', 'Fira Mono', SFMono-Regular, Menlo, Consolas,
+  'Liberation Mono', monospace;

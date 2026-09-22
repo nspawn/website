@@ -1,0 +1,166 @@
+baseURL: https://nspawn.org
+title: nspawn
+
+# Language settings
+contentDir: content/en
+defaultContentLanguage: en
+defaultContentLanguageInSubdir: false
+enableMissingTranslationPlaceholders: true
+
+enableRobotsTXT: true
+
+# Gives values to .Lastmod etc. (the "last modified" line at the bottom of docs pages).
+enableGitInfo: true
+
+# No tags or categories on this site.
+disableKinds: [taxonomy, term]
+
+# Image processing configuration.
+imaging:
+  resampleFilter: CatmullRom
+
+languages:
+  en:
+    label: English
+    title: nspawn
+    params:
+      description: >-
+        Docker-like management of systemd-nspawn machines, with an image hub
+
+markup:
+  goldmark:
+    parser:
+      attribute:
+        block: true
+    renderer:
+      unsafe: true
+  highlight:
+    # See https://xyproto.github.io/splash/docs/all.html for the available styles.
+    style: tango
+    noClasses: false # Required for dark-mode support of code blocks
+
+# "Print entire section" for the docs.
+outputs:
+  home: [HTML]
+  section: [HTML, print]
+
+params:
+  taxonomy:
+    taxonomyCloud: []
+    taxonomyPageHeader: []
+
+  # The footer link; the page explains what this site does (not) collect.
+  privacy_policy: /about/#privacy
+
+  # Version of nspawn the documentation describes.
+  version: 0.2.0
+  archived_version: false
+
+  # In-page links to open issues and suggest changes.
+  github_repo: https://github.com/nspawn/website
+  # The sibling repository where the product code lives.
+  github_project_repo: https://github.com/nspawn/nspawn
+  github_branch: main
+
+  # Local search with Lunr: no external service involved.
+  offlineSearch: true
+  offlineSearchSummaryLength: 100
+  offlineSearchMaxResults: 15
+
+  prism_syntax_highlighting: false
+
+  copyright:
+    authors: >-
+      The nspawn.org team |
+      [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) |
+    from_year: 2019
+    to_year: present
+
+  ui:
+    breadcrumb_disable: false
+    navbar_logo: true
+    navbar_translucent_over_cover_disable: false
+    sidebar_menu_foldable: true
+    sidebar_menu_compact: false
+    sidebar_search_disable: false
+    showLightDarkModeMenu: true
+    footer_about_enable: true
+    # Needs Google Analytics, which this site does not use.
+    feedback:
+      enable: false
+    readingtime:
+      enable: false
+
+  # Helpers used by the landing page (see content/en/_index.md).
+  btn-lg: class="btn btn-lg btn-{1}" role="button"
+  FA: <i class="fa-{1} fa-{2} text-{3} px-1"></i>
+
+  links:
+    # Shown on the left of the footer and on the community page.
+    user:
+      - name: Matrix
+        url: https://matrix.to/#/#nspawn-org:matrix.org
+        icon: fa fa-comments
+        desc: "Chat with the team and other users: #nspawn-org on matrix.org."
+      - name: IRC
+        url: https://web.libera.chat/#nspawn-org
+        icon: fa fa-hashtag
+        desc: "The same on IRC: #nspawn-org on Libera.Chat."
+      - name: Blog
+        url: https://blog.nspawn.org/
+        icon: fa fa-rss
+        desc: Release notes and news about nspawn and the hub.
+      - name: Email
+        url: mailto:team@nspawn.org
+        icon: fa fa-envelope
+        desc: Write to the team.
+    # Shown on the right of the footer and on the community page.
+    developer:
+      - name: nspawn on GitHub
+        url: https://github.com/nspawn/nspawn
+        icon: fab fa-github
+        desc: The source of the tool. Issues and pull requests are welcome.
+      - name: mkosi definitions
+        url: https://github.com/nspawn/mkosi-definitions
+        icon: fa fa-cubes
+        desc: How the images on the hub are built.
+      - name: This website
+        url: https://github.com/nspawn/website
+        icon: fa fa-globe
+        desc: Fix a typo or add a page.
+
+menu:
+  main:
+    - name: Blog
+      url: https://blog.nspawn.org/
+      weight: 30
+    - name: GitHub
+      url: https://github.com/nspawn
+      weight: 50
+      pre: '<i class="fab fa-github"></i> '
+
+# No third-party services, as on the previous nspawn.org.
+privacy:
+  disqus:
+    disable: true
+  googleAnalytics:
+    disable: true
+  instagram:
+    disable: true
+  x:
+    disable: true
+  vimeo:
+    disable: true
+  youtube:
+    disable: true
+    privacyEnhanced: true
+
+module:
+  # Uncomment to build against a local Docsy clone declared in docsy.work.
+  # workspace: docsy.work
+  hugoVersion:
+    extended: true
+    min: 0.160.1
+  imports:
+    - path: github.com/google/docsy/theme
+      disable: false

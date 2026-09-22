@@ -1,14 +1,21 @@
 version: 2
 updates:
-- package-ecosystem: npm
-  directory: "/"
-  schedule:
-    interval: daily
-    time: '20:00'
-  open-pull-requests-limit: 10
-- package-ecosystem: bundler
-  directory: "/"
-  schedule:
-    interval: daily
-    time: '20:00'
-  open-pull-requests-limit: 10
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    ignore:
+      # Pinned and coupled to its allowScripts approval; bump it with
+      # "npm run update:hugo" followed by "npm run approve:hugo" (see CONTRIBUTING.md).
+      - dependency-name: hugo-extended
+      # Come through the Docsy theme (packages/hugoautogen is generated from it).
+      - dependency-name: bootstrap
+      - dependency-name: "@fortawesome/fontawesome-free"
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

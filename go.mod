@@ -1,5 +1,5 @@
-module github.com/google/docsy-example
+module github.com/nspawn/website
 
 go 1.12
 
-require github.com/google/docsy v0.9.0 // indirect
+require github.com/google/docsy/theme v0.17.0 // indirect
