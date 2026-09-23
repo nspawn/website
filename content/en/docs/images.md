@@ -246,9 +246,9 @@ volume ls` shows them and `volume rm` or `volume prune` removes the unused ones.
 | --- | --- |
 | `/var/lib/machines/NAME` | The root of a machine with the `overlay` or `flat` backend (a mount point in the first case). |
 | `/var/lib/machines/NAME.mstack` | The `systemd.mstack` directory of a machine with the `mstack` backend. |
-| `/var/lib/nspawn/` | nspawn's own state: blobs as downloaded, extracted layers, image records, stored manifests, the private upper directories of overlay machines, the generated network files and units of each machine, mkosi build output and cache, and the store lock. |
+| `/var/lib/nspawn/` | nspawn's own state: blobs as downloaded, extracted layers, image records, stored manifests, the private upper directories of overlay machines, the generated network files and units of each machine, mkosi build output and cache, and the store lock. Root's alone (0700), but for the generated files an mstack machine binds from inside its user namespace; the directory itself can only be passed through (0711). |
 | `/var/lib/nspawn/volumes/NAME` | A named volume (`-v NAME:/inside`). |
-| `/etc/systemd/nspawn/NAME.nspawn` | The settings nspawn generates for a machine; regenerated at every `start`. |
+| `/etc/systemd/nspawn/NAME.nspawn` | The settings nspawn generates for a machine; regenerated at every `start`, mode 0600 since it carries the `-e` variables. |
 | `/etc/systemd/system/systemd-nspawn@NAME.service.d/` | The drop-in with the unit hooks (and the machine's `Restart=`, `MemoryMax=`, `MemorySwapMax=`, `CPUQuota=` and `TasksMax=` when it has them) and, for an overlay machine, the one that requires its mount unit. The mount unit itself is next to them in `/etc/systemd/system/`. |
 | `/etc/systemd/system/machines.target.wants/systemd-nspawn@NAME.service` | The boot link of a machine with `--restart always` or `unless-stopped`; `rm` removes it. |
 | `/etc/nspawn/nspawn.toml` | The [configuration file](/docs/configuration/), optional. |
