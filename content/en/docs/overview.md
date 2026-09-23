@@ -33,7 +33,9 @@ machines with a docker-like workflow:
   `nspawn start` and `nspawn stop`.
 - The docker flags you know apply to any kind of machine: `-p` publishes
   ports, `-e` sets variables, `-v` mounts host directories or named volumes,
-  `--entrypoint` and the arguments after `--` change what an app runs.
+  `--entrypoint` and the arguments after `--` change what an app runs, `-l`
+  labels it, `--restart` gives it a restart policy, and `-m`, `--cpus` and
+  `--pids-limit` bound its resources.
 - `build` runs mkosi on a directory with a `mkosi.conf` and imports the result
   as a local image; `push` uploads an image to a registry, skipping the layers
   that are already there.
@@ -53,8 +55,11 @@ read.
 
 Every command is a method call on `org.nspawn.Manager`: images, machines, the
 network and credentials are methods, the long operations (pull, push, build,
-create) come back as job objects that report their output and result, and `exec`
-hands the command's terminal over the bus.
+create, rm, images rm, cp, volume rm and volume prune) come back as job objects
+that report their output and result, and `exec` hands the command's terminal
+over the bus. Scripts that would rather not speak
+D-Bus get the same dictionaries as JSON from `inspect` and `--json` on the
+listings.
 
 Who may call what is polkit's answer, the way it is for machined and systemd.
 The bus lets everyone in and the service asks polkit about the caller, under
@@ -62,8 +67,8 @@ two actions:
 
 | Action | Methods |
 | --- | --- |
-| `org.nspawn.inspect` | The ones that only read: `images ls`, `ps` and `machines ls`, `network ls`. |
-| `org.nspawn.manage` | Everything else: pulling, building, starting, stopping, `exec`, `shell`, `logs`, the registry commands and the credentials. |
+| `org.nspawn.inspect` | The ones that only read: `images ls`, `ps` and `machines ls`, `inspect`, `network ls`, `volume ls`. |
+| `org.nspawn.manage` | Everything else: pulling, building, starting, stopping, removing, `exec`, `shell`, `cp`, `logs`, volumes, the registry commands and the credentials. |
 
 Both are for administrators by default, so `sudo nspawn ...` works as it always
 did, and a desktop session (or a terminal where you started `pkttyagent`) is

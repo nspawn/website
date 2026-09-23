@@ -2,9 +2,9 @@
 title: Machines
 weight: 4
 description: >-
-  Starting and stopping machines, entrypoints, environment and volumes,
-  running commands inside, reading their output, and how boot and app images
-  differ.
+  Starting and stopping machines, entrypoints, environment, volumes and labels,
+  restart policies and resource limits, running commands inside, copying files,
+  reading their output, removing machines, and how boot and app images differ.
 ---
 
 Every one of these commands is a call to the
@@ -25,13 +25,15 @@ releases everything however the machine ended. So `machinectl start NAME`,
 `systemctl enable systemd-nspawn@NAME` for a machine that comes up at boot, a
 program that exits on its own or a crash all behave like `nspawn start` and
 `nspawn stop`. The drop-in names the nspawn binary that wrote it, which is why
-nspawn belongs in `/usr/local/bin` or `/usr/bin`.
+nspawn belongs in `/usr/local/bin` or `/usr/bin`. It also carries the machine's
+restart policy and resource limits, when it has them.
 
 ## start
 
 ```shell
 sudo nspawn start NAME [--network bridge|veth|host] [-p HOST:CONTAINER[/udp]]...
                   [--entrypoint PROGRAM] [-e VAR[=VALUE]]... [-v SOURCE:TARGET[:ro]]...
+                  [-l KEY=VALUE]... [--restart POLICY] [-m SIZE] [--cpus N] [--pids-limit N]
                   [--image-command] [--no-wait] [-- ARGUMENTS...]
 ```
 
@@ -56,6 +58,9 @@ variables and the volumes of the last run:
   Boot images refuse them.
 - `-v` mounts a host directory or a named volume into any kind of machine; see
   [Volumes](#volumes).
+- `-l`/`--label`, `--restart`, `-m`, `--cpus` and `--pids-limit` label the
+  machine, give it a restart policy and bound its resources; see
+  [Labels](#labels) and [Restart policies and limits](#restart-policies-and-limits).
 
 Machines are started by name. A reference (`fedora:44`, `docker.io/x`) is
 refused with a hint to `pull` it or to `create` a machine from a local image.
@@ -143,7 +148,8 @@ sudo nspawn start web -v /srv/www:/usr/share/nginx/html:ro -v pgdata:/var/lib/po
   as with podman: `start` refuses a path that is not there rather than making
   one. A `SOURCE` without a leading `/` is a **named volume** that nspawn
   keeps under `/var/lib/nspawn/volumes/NAME`, created on first use and never
-  deleted by `images rm`. Names may contain letters, digits, `_`, `.` and `-`.
+  deleted by `rm` or `images rm`. Names may contain letters, digits, `_`, `.`
+  and `-`, and may not start with a dot.
 - `TARGET` is an absolute path inside the machine, other than `/`. The same
   target cannot be mounted twice.
 - `:ro` mounts it read-only; `:rw` is the default. Paths with whitespace are
@@ -159,24 +165,84 @@ systemd-nspawn cannot idmap binds under managed user namespaces; that is what
 otherwise. On overlay and flat the volumes come from the settings file and are
 there before the init even runs.
 
+Named volumes outlive the machines that use them. `nspawn volume ls` lists them
+with the machines whose records mount them, `volume create NAME` makes one
+ahead of its first use, and `volume rm` and `volume prune` remove the ones no
+machine uses; a volume a machine still names is refused until that machine is
+started with other volumes (or `-v none`) or removed.
+
+## Labels
+
+```shell
+sudo nspawn start web --label caddy=web.example --label tier=front
+```
+
+Labels work as in docker. The image's own labels (`LABEL` in a Containerfile,
+`OciLabels=` in a `mkosi.conf`) are read from its configuration when it is
+pulled or built, and `-l`/`--label KEY=VALUE` on `start` or `create` adds the
+machine's own on top, remembered like the ports; `--label none` forgets them.
+nspawn does nothing with them itself: `nspawn inspect` and `ps --json` show the
+merged `labels` and the image's `image_labels`, for tools that configure
+themselves from them, a reverse proxy say.
+
+## Restart policies and limits
+
+```shell
+sudo nspawn start web --restart unless-stopped -m 512m --cpus 1 --pids-limit 500
+```
+
+`--restart` takes docker's policies:
+
+- `no`, the default: a machine that ends stays down.
+- `on-failure`: restarted when its program, or its init, dies with an error.
+- `always`: restarted whenever it ends, and started at boot.
+- `unless-stopped`: like `always`, until `nspawn stop`, which also takes it
+  off the boot list until the next `nspawn start`.
+
+A machine that ends is started again after a second, then later and later, up
+to half a minute, for as long as it keeps failing; `ps` shows it as
+`restarting` meanwhile, and `nspawn stop` ends that. The ports, the address and
+the volumes come back with it, since the unit's own hooks prepare every run.
+`always` and `unless-stopped` enable the unit the way `machinectl enable` does,
+and removing the machine takes that back. `machinectl stop` stops a machine for
+good too, but does not take an `unless-stopped` one off the boot list, and a
+`poweroff` from inside counts as ending under `always`.
+
+`-m`/`--memory` (`512m`, `2g`), `--cpus` (`0.5`, `2`) and `--pids-limit` bound
+the whole machine: they are the MemoryMax=, CPUQuota= and TasksMax= of its
+unit, which is why nothing inside shows them. As with docker, `--memory` also
+lets the machine use as much swap again (MemorySwapMax=), and no more. `0`
+removes a limit.
+
+Both are remembered like the ports and apply at the next start. With a policy,
+`stop --no-wait` of an app also lets systemd-nspawn's stub init send the
+program SIGTERM and SIGHUP, since nobody stays behind to stop the unit later.
+
 ## ps
 
 ```shell
-sudo nspawn ps [-a]      # same as: nspawn machines ls [-a]
+sudo nspawn ps [-a] [--json]      # same as: nspawn machines ls [-a] [--json]
 ```
 
 ```text
  MACHINE    IMAGE                     MODE  COMMAND                             STATE    UP  PID    NETWORK                  OS
- fedora-44  hub.nspawn.org/fedora:44  boot  init                                running  2h  48213  10.99.0.2                fedora
- web        docker.io/library/nginx   app   /docker-entrypoint.sh nginx -g ...  running  5m  51002  10.99.0.3 8080->80/tcp   debian
+ fedora-44  hub.nspawn.org/fedora:44  boot  init                                running  2h  48213  10.99.0.2                Fedora Linux 44 (Forty Four)
+ web        docker.io/library/nginx   app   /docker-entrypoint.sh nginx -g ...  running  5m  51002  10.99.0.3 8080->80/tcp   Debian GNU/Linux 12 (bookworm)
  db         hub.nspawn.org/fedora:44  boot  init                                stopped  -   -      10.99.0.4                -
 ```
 
-`ps` lists every machine machined knows about; machines that nspawn did not
+`ps` lists every container machined knows about (the virtual machines it also
+registers, libvirt's among them, are left out); machines that nspawn did not
 install show `-` in the image columns. `-a` adds the nspawn machines that are
 not running. `COMMAND` is the effective entrypoint and arguments of an app,
 and `NETWORK` the bridge address with the published ports, or `host` or
-`veth`.
+`veth`. A machine between two runs of its restart policy is listed as
+`restarting` even without `-a`.
+
+`ps --json` prints the same machines as the service returns them, each with its
+whole record, and `nspawn inspect NAME...` prints one or more machines, running
+or not, as a JSON array, like `docker inspect`: what a script or an agent
+reads.
 
 ## exec and shell
 
@@ -194,6 +260,34 @@ anything else is needed inside.
 
 `shell` opens an interactive shell as `root` (or `-u USER`): machined's login
 session for booted machines, `/bin/sh` in the machine's namespaces for apps.
+
+## cp
+
+```shell
+sudo nspawn cp ./nginx.conf web:/etc/nginx/
+sudo nspawn cp web:/var/log/nginx ./nginx-logs
+sudo nspawn cp ./site/. web:/usr/share/nginx/html
+```
+
+`cp` copies files and directories between the host and a machine, running or
+not, with docker cp's rules:
+
+- An existing directory as the destination receives the source under its own
+  name; anything else is the name of the copy. A destination ending in `/`
+  has to be a directory.
+- `DIR/.` copies the contents of DIR rather than DIR.
+- What goes in belongs to root inside the machine, whatever user namespace it
+  runs in; what comes out belongs to whoever ran `cp`. Modes and modification
+  times are kept.
+- Paths inside the machine are resolved inside it, so a link there, absolute
+  or not, never leads to the host. Links are copied as links; devices, sockets
+  and fifos are left out.
+
+A stopped overlay or flat machine can be copied into and out of; a stopped
+`mstack` machine cannot, since its tree only exists while it runs. Where
+SELinux enforces, a host directory mounted with `-v` keeps its own label, which
+the service may not be allowed to write to (docker needs `:z` for the same);
+named volumes are nspawn's own and always work.
 
 ## logs
 
@@ -232,3 +326,19 @@ returns right after the request, without the kill after `--timeout`; the unit
 hooks release the network when the machine ends. `-f` kills every process at
 once, like `docker kill`. Stopping a machine that already ended is not an
 error.
+With a restart policy the machine stays stopped for now: an `unless-stopped`
+machine is also taken off the boot list until the next `start`, while an
+`always` one still starts at the next boot.
+
+## rm
+
+```shell
+sudo nspawn rm web2
+sudo nspawn rm -f web        # stop it first, like docker rm -f
+```
+
+`rm` removes a machine: its record, its tree, its unit files, the boot link a
+restart policy made, and the layers nobody else uses. A pulled image is a
+machine too, so `rm` and `images rm` remove the same thing; `rm -f` stops a
+running machine first where both refuse otherwise. Named volumes are kept, and
+`rm` says which.

@@ -57,8 +57,8 @@ On a host without polkit the service answers root alone. See
 
 Where the work happens. The command line is its client, the way `machinectl`
 and `systemctl` are clients of machined and systemd: every command is a method
-call, and pulls, pushes, builds and creates come back as job objects that report
-their output. The bus starts the service when a command arrives and it exits
+call, and pulls, pushes, builds, creates, removals and copies come back as job
+objects that report their output. The bus starts the service when a command arrives and it exits
 after a minute without work, so nothing of nspawn's runs in the background
 otherwise. A package installs it; for a binary you built yourself,
 `sudo nspawn daemon --install`. Its journal is `journalctl -u nspawn.service`,
@@ -103,7 +103,7 @@ app.
 
 With volumes, as in docker: `-v /srv/data:/data` mounts a host directory,
 `-v pgdata:/var/lib/postgresql` a named volume that nspawn keeps under
-`/var/lib/nspawn/volumes/pgdata`. Named volumes survive `images rm`. See
+`/var/lib/nspawn/volumes/pgdata`. Named volumes survive `rm` and `images rm`. See
 [Volumes](/docs/machines/#volumes).
 
 ## Can I run several machines from one image?
@@ -114,9 +114,11 @@ of its own. See [More machines from one image](/docs/images/#more-machines-from-
 
 ## Can a machine start at boot?
 
-Yes. `systemctl enable systemd-nspawn@NAME.service` (or `machinectl enable
-NAME`) is enough: the drop-in nspawn installs on the unit prepares the network
-and publishes the ports whoever starts the machine.
+Yes. `sudo nspawn start NAME --restart always` (or `unless-stopped`) enables the
+unit and also restarts the machine when it ends; `systemctl enable
+systemd-nspawn@NAME.service` (or `machinectl enable NAME`) works too. Either way
+the drop-in nspawn installs on the unit prepares the network and publishes the
+ports whoever starts the machine.
 
 ## How do I get a machine's address from the host?
 
@@ -127,10 +129,11 @@ well.
 
 ## How do I free disk space?
 
-`sudo nspawn images rm NAME` removes an image, and afterwards every layer and
-blob that no remaining image references. Overlay machines keep their writes in
-a private directory under `/var/lib/nspawn`, which goes away with the image;
-named volumes stay until you delete them from `/var/lib/nspawn/volumes`.
+`sudo nspawn rm NAME` (or `images rm`) removes a machine or image, and
+afterwards every layer and blob that no remaining image references. Overlay
+machines keep their writes in a private directory under `/var/lib/nspawn`,
+which goes away with the image; named volumes stay until `sudo nspawn volume rm
+NAME` or `sudo nspawn volume prune`.
 
 ## Where do I ask or report a problem?
 

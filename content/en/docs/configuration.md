@@ -87,6 +87,9 @@ it is created or started; every one of them is remembered until it is changed:
 
 - `--backend` and `--mode` on `pull` and `build`; `--backend` on `create`.
 - `--name` on `pull` and `build`, to choose the local name.
-- `--network`, `-p`, `-e`, `-v`, `--entrypoint` and the arguments after `--`
-  on `start` and `create`. `-p none`, `-e none`, `-v none` and
-  `--image-command` forget what was remembered.
+- `--network`, `-p`, `-e`, `-v`, `--label`, `--entrypoint` and the arguments
+  after `--` on `start` and `create`. `-p none`, `-e none`, `-v none`,
+  `--label none` and `--image-command` forget what was remembered.
+- `--restart`, `-m`/`--memory`, `--cpus` and `--pids-limit` on `start` and
+  `create`, applied at the next start. `--restart no` and a limit of `0`
+  remove them.

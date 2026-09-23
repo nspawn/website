@@ -3,17 +3,18 @@ title: Command reference
 linkTitle: Reference
 weight: 8
 description: >-
-  Every command and option of nspawn 1.0.0.
+  Every command and option of nspawn 1.1.0.
 ---
 
 `nspawn --help` and `nspawn COMMAND --help` print the same information. Errors
 are printed as `error: ...` on standard error and the exit status is 1;
 `exec` exits with the status of the command it ran.
 
-Every command but `daemon` and the unit hooks is a call to the
+Every command but `daemon`, `completions` and the unit hooks is a call to the
 [service](/docs/overview/#the-service) on the system bus, which asks polkit
-whether the caller may take the action: the ones that only read (`images ls`,
-`ps`, `machines ls`, `network ls`) ask for `org.nspawn.inspect`, the rest for
+whether the caller may take the action: the listings (`images ls`, `ps`,
+`machines ls`, `inspect`, `network ls`, `volume ls`) ask for
+`org.nspawn.inspect`; everything else, `search` and `hub` included, asks for
 `org.nspawn.manage`. Both are for administrators by default, and root is never
 asked.
 
@@ -113,7 +114,8 @@ systemd-machined.
 
 ```text
 nspawn create SOURCE NAME [--backend BACKEND] [--network bridge|veth|host] [-p HOST:CONTAINER[/udp]]...
-              [--entrypoint PROGRAM] [-e VAR[=VALUE]]... [-v SOURCE:TARGET[:ro]]... [-f] [-- ARGUMENTS...]
+              [--entrypoint PROGRAM] [-e VAR[=VALUE]]... [-v SOURCE:TARGET[:ro]]... [-l KEY=VALUE]...
+              [--restart POLICY] [-m SIZE] [--cpus N] [--pids-limit N] [-f] [-- ARGUMENTS...]
 ```
 
 Makes another machine from a local image, like `docker create`, without
@@ -129,6 +131,8 @@ touching the registry. The layers are shared with the source.
 | `--entrypoint PROGRAM` | Replace the image's entrypoint; an empty string runs the arguments alone. App images only. |
 | `-e`, `--env VAR[=VALUE]` | Environment for the program, `VAR=value` or `VAR` copied from the calling shell, like `docker -e`. App images only. |
 | `-v`, `--volume SOURCE:TARGET[:ro]` | Mount a host directory or a named volume, like `docker -v`. |
+| `-l`, `--label KEY=VALUE` | Label the machine, on top of the image's own labels, like `docker --label`. Not inherited from the source. |
+| `--restart`, `-m`, `--cpus`, `--pids-limit` | Restart policy and limits, as for [start](#start). Not inherited from the source. |
 | `-f`, `--force` | Replace an existing machine with the same name. |
 | `-- ARGUMENTS...` | App images: replace the image's cmd; they follow its entrypoint, as with docker. |
 
@@ -173,12 +177,13 @@ Manage local images.
 ### images ls
 
 ```text
-nspawn images ls
+nspawn images ls [--json]
 ```
 
 Lists the local images known to systemd-machined: name, type, and for the ones
 nspawn installed the backend, origin (`pull`, `build` or `create`), source
-reference, size and whether the image is read-only. `images list` is an alias.
+reference, size and whether the image is read-only. `--json` prints the list as
+the service returns it. `images list` is an alias.
 
 ### images rm
 
@@ -187,24 +192,59 @@ nspawn images rm NAME...
 ```
 
 Removes local images and the layers and blobs nobody uses any more. Refuses
-the image of a running machine. Named volumes are kept.
+the image of a running machine, or of one its restart policy is bringing back.
+Named volumes are kept. A pulled image is a machine too, so this is the same as
+[rm](#rm) without `--force`.
+
+## rm
+
+```text
+nspawn rm [-f] NAME...
+```
+
+Removes machines, like `docker rm`: the record, the tree, the unit files, the
+boot link a restart policy made, and the layers and blobs nobody else uses.
+Every name is tried; one that cannot be removed is reported at the end. Named
+volumes are kept, and each one kept is mentioned.
+
+| Option | Meaning |
+| --- | --- |
+| `-f`, `--force` | Stop a running (or restarting) machine first, with SIGKILL, instead of refusing it. |
 
 ## ps, machines ls
 
 ```text
-nspawn ps [-a]
-nspawn machines ls [-a]
+nspawn ps [-a] [--json]
+nspawn machines ls [-a] [--json]
 ```
 
 Lists the running machines, like `docker ps`: name, image, mode, command,
-state, uptime, leader PID, network and OS. `-a`, `--all` also lists the nspawn
-machines that are not running. `machines list` is an alias of `machines ls`.
+state, uptime, leader PID, network and OS. A machine whose restart policy is
+bringing it back shows as `restarting` (or `starting` and `closing` while its
+unit comes up or goes down), even without `-a`. `-a`, `--all` also lists the nspawn
+machines that are not running. `--json` prints what the service returns for
+each machine, its whole record included. `machines list` is an alias of
+`machines ls`.
+
+## inspect
+
+```text
+nspawn inspect NAME...
+```
+
+Prints everything nspawn knows about machines or images, running or not, as a
+JSON array with one object per name, like `docker inspect`: the record (image
+reference, digest, backend, mode, network, address, ports, volumes,
+environment, command, labels, restart policy, limits) and, for a running
+machine, its state, start time, leader PID and OS. The keys are those of the
+[D-Bus interface](https://github.com/nspawn/nspawn/blob/master/docs/DBUS.md).
 
 ## start
 
 ```text
 nspawn start NAME [--network bridge|veth|host] [-p HOST:CONTAINER[/udp]]...
              [--entrypoint PROGRAM] [-e VAR[=VALUE]]... [-v SOURCE:TARGET[:ro]]...
+             [-l KEY=VALUE]... [--restart POLICY] [-m SIZE] [--cpus N] [--pids-limit N]
              [--image-command] [--no-wait] [-- ARGUMENTS...]
 ```
 
@@ -217,6 +257,11 @@ Boots an image as a machine. Every option is remembered for the next start.
 | `--entrypoint PROGRAM` | Replace the image's entrypoint; an empty string runs the arguments alone. App images only. |
 | `-e`, `--env VAR[=VALUE]` | Environment for the program, `VAR=value` or `VAR` copied from the calling shell. Repeatable; `none` forgets them. App images only. |
 | `-v`, `--volume SOURCE:TARGET[:ro]` | Mount a host directory or a named volume. Repeatable; `none` forgets them. |
+| `-l`, `--label KEY=VALUE` | Label the machine, on top of the image's own labels. Repeatable; `none` forgets them. |
+| `--restart no\|on-failure\|always\|unless-stopped` | Restart policy, like `docker --restart`. `always` and `unless-stopped` also start the machine at boot; `nspawn stop` takes an `unless-stopped` machine off the boot list until the next `start`. Applied at the next start. |
+| `-m`, `--memory SIZE` | Memory limit of the whole machine, like `docker -m`: `512m`, `2g` (at least `4m`), and as much swap again; `0` removes it. Applied at the next start. |
+| `--cpus N` | CPU limit of the whole machine, like `docker --cpus`: `0.5`, `2`; `0` removes it. Applied at the next start. |
+| `--pids-limit N` | Most processes and threads the machine may have (at least 16 for a booted machine); `0` removes the limit. Applied at the next start. |
 | `--image-command` | Forget the remembered entrypoint and arguments and run the image's own again. |
 | `--no-wait` | Do not wait for a booted machine's init to be up before returning. Its registration is still awaited, so that ports and firewall rules can be applied. |
 | `-- ARGUMENTS...` | App images: replace the image's cmd; they follow its entrypoint, as with docker. |
@@ -224,12 +269,15 @@ Boots an image as a machine. Every option is remembered for the next start.
 ## stop
 
 ```text
-nspawn stop NAME [-f] [-t SECONDS] [--no-wait]
+nspawn stop NAME [-f] [-t TIMEOUT] [--no-wait]
 ```
 
 Powers off a running machine: the image's stop signal to the program of an
 app, a poweroff request to a booted machine. Stopping a machine that already
-ended only cleans up after it.
+ended only cleans up after it. A machine with a restart policy stays stopped,
+and one that was waiting to be restarted is stopped too. An `unless-stopped`
+machine is also taken off the boot list until the next `start`; an `always`
+one stays enabled and starts again at the next boot (`rm` takes that away).
 
 | Option | Meaning |
 | --- | --- |
@@ -262,6 +310,30 @@ nspawn shell MACHINE [-u USER]
 Opens an interactive shell inside a running machine as `USER` (default
 `root`): machined's login session for booted machines, `/bin/sh` in the
 machine's namespaces for app machines.
+
+## cp
+
+```text
+nspawn cp MACHINE:PATH DESTINATION
+nspawn cp SOURCE MACHINE:PATH
+```
+
+Copies files and directories between the host and a machine, like
+`docker cp`. The machine may be running, or stopped if it is an overlay or flat
+machine; a stopped mstack machine has no tree on the host until it runs.
+
+- An existing directory as the destination receives the source under its own
+  name; anything else is the name of the copy, whose parent must exist. A
+  destination ending in `/` must be a directory.
+- `DIR/.` as the source copies the contents of DIR instead of DIR itself.
+- What goes into a machine belongs to its root, whatever user namespace the
+  machine runs in; what comes out belongs to the user who ran `cp`. Modes and
+  modification times are kept.
+- Paths inside the machine are resolved inside it: a link there, absolute or
+  not, never leads to the host. Links are copied as links; devices, sockets and
+  fifos are left out.
+- A relative path after `MACHINE:` starts at the machine's root. A local path
+  with a colon is written `./a:b`.
 
 ## logs
 
@@ -297,11 +369,54 @@ is useful at boot and for troubleshooting.
 ### network ls
 
 ```text
-nspawn network ls
+nspawn network ls [--json]
 ```
 
 Lists the machines on the bridge with their addresses and published ports.
+`--json` prints the bridge and the machines as the service returns them.
 `network list` is an alias.
+
+## volume
+
+Named volumes, the directories `-v NAME:/path` makes under
+`/var/lib/nspawn/volumes`. Removing a machine keeps them.
+
+### volume ls
+
+```text
+nspawn volume ls [--json]
+```
+
+Lists the named volumes with the machines whose records mount them, when each
+was made and its path. `--json` prints the list as the service returns it.
+`volume list` is an alias.
+
+### volume create
+
+```text
+nspawn volume create NAME
+```
+
+Makes a volume ahead of its first use (`start` makes it otherwise): a
+directory owned by root, mode 0755. One that exists already is fine. Names have
+letters, digits, `_`, `.` and `-`, not starting with a dot.
+
+### volume rm
+
+```text
+nspawn volume rm NAME...
+```
+
+Removes volumes no machine uses. A volume a machine still names is refused
+until that machine is started with other volumes (or `-v none`) or removed.
+
+### volume prune
+
+```text
+nspawn volume prune [-f]
+```
+
+Removes every volume no machine uses, after asking on a terminal unless `-f`.
 
 ## daemon
 
@@ -320,7 +435,7 @@ not a command to type; `--install` is.
 ## completions
 
 ```text
-nspawn completions bash|zsh|fish
+nspawn completions bash|elvish|fish|powershell|zsh
 ```
 
 Writes the completions for that shell on standard output; they come from the
