@@ -53,10 +53,11 @@ recorded for a machine is reassigned from the new subnet on its next start.
 
 The file is read by the service, so a change takes effect on its next start:
 `sudo systemctl restart nspawn.service` (or simply waiting for it to go idle)
-picks it up. When a machine is installed or started with `--config`, the unit
-hooks it gets carry the same `--config`, and so does the unit that
-`nspawn daemon --install` writes, so the machine keeps using that file whoever
-starts it.
+picks it up. `--config` on the command line does not reach it: the command line
+is a client and only carries the registry and its CA certificate. To put the
+service on another file, name it when installing the service,
+`sudo nspawn --config /etc/nspawn/lab.toml daemon --install`; the unit then
+carries it, and so do the hooks the service writes for every machine.
 
 ## Environment variables
 

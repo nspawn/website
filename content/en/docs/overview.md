@@ -89,8 +89,8 @@ host. Granting `org.nspawn.inspect` alone is the mild version: looking, without
 touching.
 
 A package installs the service; for a binary you built yourself,
-`sudo nspawn daemon --install` writes the bus policy, the activation file and
-the unit and tells the bus about them. Its journal is the usual one:
+`sudo nspawn daemon --install` writes the bus policy, the polkit actions, the
+activation file and the unit, and tells systemd and the bus about them. Its journal is the usual one:
 
 ```shell
 journalctl -u nspawn.service

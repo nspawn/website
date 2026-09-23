@@ -24,8 +24,8 @@ An image reference has the form `[registry/]repository[:tag|@digest]`:
 
 The **local name** of an image, the one `start`, `stop`, `exec` and friends
 use, is derived from the reference (`fedora:44` becomes `fedora-44`) unless
-`--name` says otherwise. It has to be a valid machine name, so keep it to
-letters, digits, `-` and `_`.
+`--name` says otherwise. It has to be a valid machine name: letters, digits,
+`.`, `_` and `-`, at most 64 characters, not starting with a dot.
 
 ## The hub
 
@@ -156,7 +156,8 @@ The backend decides how the layers become a directory systemd-nspawn can boot:
 
 Pick one per image with `--backend` on `pull`, `build` or `create`, or set a
 default in the configuration file. `nspawn images ls` shows which backend each
-image uses.
+image uses. On `create`, `auto` means the backend of the image it comes from,
+not the chain above.
 
 App images are always assembled as `overlay` (or `flat`), even where `mstack`
 is available: a machine under managed user namespaces cannot join the network
@@ -243,7 +244,7 @@ Named volumes are not deleted: they may belong to another machine.
 | `/etc/systemd/nspawn/NAME.nspawn` | The settings nspawn generates for a machine; regenerated at every `start`. |
 | `/etc/systemd/system/systemd-nspawn@NAME.service.d/` | The drop-in with the unit hooks and, for an overlay machine, the one that requires its mount unit. The mount unit itself is next to them in `/etc/systemd/system/`. |
 | `/etc/nspawn/nspawn.toml` | The [configuration file](/docs/configuration/), optional. |
-| `/etc/systemd/system/nspawn.service`, `/etc/dbus-1/system.d/org.nspawn.conf` | The service and its bus policy, from a package or from `nspawn daemon --install`. |
+| `/usr/lib/systemd/system/nspawn.service`, `/usr/share/dbus-1/system.d/org.nspawn.conf`, `/usr/share/polkit-1/actions/org.nspawn.policy` | The service, its bus policy and its polkit actions, as a package installs them. `nspawn daemon --install` writes the unit and the bus policy under `/etc` instead, where they take precedence, and the actions in the same place as the packages. |
 | `/etc/nspawn/auth.json` | The credentials `login` stored, mode 0600. |
 | `/run/netns/nspawn-NAME` | The network namespace of a running app machine on the bridge. |
 

@@ -30,7 +30,7 @@ nspawn belongs in `/usr/local/bin` or `/usr/bin`.
 ## start
 
 ```shell
-sudo sudo nspawn start NAME [--network bridge|veth|host] [-p HOST:CONTAINER[/udp]]...
+sudo nspawn start NAME [--network bridge|veth|host] [-p HOST:CONTAINER[/udp]]...
                   [--entrypoint PROGRAM] [-e VAR[=VALUE]]... [-v SOURCE:TARGET[:ro]]...
                   [--image-command] [--no-wait] [-- ARGUMENTS...]
 ```
@@ -139,8 +139,9 @@ sudo nspawn start web -v /srv/www:/usr/share/nginx/html:ro -v pgdata:/var/lib/po
 
 `-v SOURCE:TARGET[:ro]` is docker's syntax:
 
-- An absolute `SOURCE` is a host directory (or file), created when it does not
-  exist. A `SOURCE` without a leading `/` is a **named volume** that nspawn
+- An absolute `SOURCE` is a host directory (or file) that has to exist already,
+  as with podman: `start` refuses a path that is not there rather than making
+  one. A `SOURCE` without a leading `/` is a **named volume** that nspawn
   keeps under `/var/lib/nspawn/volumes/NAME`, created on first use and never
   deleted by `images rm`. Names may contain letters, digits, `_`, `.` and `-`.
 - `TARGET` is an absolute path inside the machine, other than `/`. The same

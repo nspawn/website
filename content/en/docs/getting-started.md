@@ -32,12 +32,17 @@ description: >-
 
 ## Installation
 
-A package brings the binary and the service it runs as. The
-[releases](https://github.com/nspawn/nspawn/releases) carry an RPM for Fedora, a
-package for Arch and a `.deb` built on Ubuntu 24.04 that also fits later Debian
-and Ubuntu releases. On a host with SELinux enforcing, install the
-`nspawn-selinux` package as well: without its policy the bus refuses to hand
-descriptors to the service.
+A package brings the binary and the service it runs as. Every
+[release](https://github.com/nspawn/nspawn/releases) carries an RPM for Fedora,
+a package for Arch, a `.deb` built on Ubuntu 24.04 that also fits later Debian
+and Ubuntu releases, the plain binary in a tarball, and a `SHA256SUMS` over all
+of them.
+
+On Fedora or RHEL with SELinux enforcing, the `nspawn-selinux` package carries
+the domain the service runs in; the RPM recommends it, so a plain `dnf install`
+of the package brings it along. Without it the service runs unconfined and the
+bus drops it when it passes a descriptor, which is what `exec`, `shell` and
+`logs` do: the rest of the commands work either way.
 
 To build it yourself you need a Rust toolchain of version 1.85 or newer:
 
@@ -50,12 +55,24 @@ sudo nspawn daemon --install
 nspawn --version
 ```
 
-`daemon --install` writes the bus policy, the activation file and the unit that
-let the bus start the service on demand, naming the binary you just installed; a
-package does the same for you. Install the binary in `/usr/local/bin` or
-`/usr/bin`, not below a home directory: the unit of every machine calls nspawn by
-the path it was installed from, and on SELinux hosts a system service is refused
-a binary under `/home`.
+`daemon --install` writes the bus policy, the polkit actions, the activation
+file and the unit that let the bus start the service on demand, naming the
+binary you just installed; a package does the same for you. Install the binary
+in `/usr/local/bin` or `/usr/bin`, not below a home directory: the unit of every
+machine calls nspawn by the path it was installed from, and on SELinux hosts a
+system service is refused a binary under `/home`.
+
+On a host with SELinux enforcing, a binary installed by hand keeps the label of
+where it sits, and a service that is not `nspawn_exec_t` runs unconfined, so
+`exec`, `shell` and `logs` fail with the client disconnected. `daemon --install`
+says so, and this is the fix:
+
+```shell
+sudo semanage fcontext -a -t nspawn_exec_t /usr/local/bin/nspawn
+sudo restorecon -v /usr/local/bin/nspawn
+```
+
+The packages install into `/usr/bin`, which their policy already labels.
 
 ## A first machine
 
@@ -82,9 +99,9 @@ sudo nspawn pull fedora:44
 ```
 
 ```text
-hub.nspawn.org/fedora:44: manifest sha256:3f9c... with 1 layer(s), assembling as overlay
-blob sha256:8a1e...: downloading
-blob sha256:c0de...: downloading
+hub.nspawn.org/fedora:44: manifest 3f9c1a2b4d5e with 1 layer(s), assembling as overlay
+blob 8a1e0c7f3b92: downloading
+blob c0de4455aa01: downloading
 image fedora-44 (boot image) is ready: nspawn start fedora-44
 ```
 
@@ -100,7 +117,7 @@ sudo nspawn ps
 
 ```text
  MACHINE    IMAGE                     MODE  COMMAND  STATE    UP   PID    NETWORK    OS
- fedora-44  hub.nspawn.org/fedora:44  boot  init     running  12s  48213  10.99.0.2  fedora
+ fedora-44  hub.nspawn.org/fedora:44  boot  init     running  12s  48213  10.99.0.2  Fedora Linux 44 (Forty Four)
 ```
 
 `start` returns once the machine's own systemd is up, so a command can follow

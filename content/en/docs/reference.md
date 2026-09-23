@@ -10,11 +10,12 @@ description: >-
 are printed as `error: ...` on standard error and the exit status is 1;
 `exec` exits with the status of the command it ran.
 
-Every command is a call to the [service](/docs/overview/#the-service) on the
-system bus, which asks polkit whether the caller may take the action: the ones
-that only read (`images ls`, `ps`, `machines ls`, `network ls`) ask for
-`org.nspawn.inspect`, the rest for `org.nspawn.manage`. Both are for
-administrators by default, and root is never asked.
+Every command but `daemon` and the unit hooks is a call to the
+[service](/docs/overview/#the-service) on the system bus, which asks polkit
+whether the caller may take the action: the ones that only read (`images ls`,
+`ps`, `machines ls`, `network ls`) ask for `org.nspawn.inspect`, the rest for
+`org.nspawn.manage`. Both are for administrators by default, and root is never
+asked.
 
 ## Global options
 
@@ -26,7 +27,10 @@ These are accepted by every command and can also come from the environment:
 | `--ca-cert FILE` | `NSPAWN_CA_CERT` | Extra CA certificate (PEM) to trust when talking to the registry. |
 | `--config FILE` | `NSPAWN_CONFIG` | Configuration file; see [Configuration](/docs/configuration/). |
 | `-h`, `--help` | | Help. |
-| `-V`, `--version` | | Version. |
+
+`login` and `logout` take the registry as their argument, so there `--registry`
+has to come before the subcommand: `nspawn --registry hub.example login -u me`.
+`-V`, `--version` belongs to `nspawn` itself, not to the subcommands.
 
 ## hub
 
@@ -172,9 +176,9 @@ Manage local images.
 nspawn images ls
 ```
 
-Lists the local images known to systemd-machined, with nspawn's backend, origin
-(`pull`, `build` or `create`) and source reference for the ones it installed.
-`images list` is an alias.
+Lists the local images known to systemd-machined: name, type, and for the ones
+nspawn installed the backend, origin (`pull`, `build` or `create`), source
+reference, size and whether the image is read-only. `images list` is an alias.
 
 ### images rm
 
@@ -192,8 +196,8 @@ nspawn ps [-a]
 nspawn machines ls [-a]
 ```
 
-Lists the running machines, like `docker ps`: image, mode, command, state,
-uptime, leader PID, network and OS. `-a`, `--all` also lists the nspawn
+Lists the running machines, like `docker ps`: name, image, mode, command,
+state, uptime, leader PID, network and OS. `-a`, `--all` also lists the nspawn
 machines that are not running. `machines list` is an alias of `machines ls`.
 
 ## start
@@ -230,7 +234,7 @@ ended only cleans up after it.
 | Option | Meaning |
 | --- | --- |
 | `-f`, `--force` | Kill every process at once instead of asking the machine to stop. |
-| `-t`, `--timeout SECONDS` | App images: seconds to wait after the stop signal before killing the machine. Default: 10. |
+| `-t`, `--timeout TIMEOUT` | App images: seconds to wait after the stop signal before killing the machine. Default: 10. |
 | `--no-wait` | Return right after the stop request, without waiting for the machine to be gone and without the kill after the timeout. |
 
 ## exec
@@ -310,8 +314,24 @@ not a command to type; `--install` is.
 
 | Option | Meaning |
 | --- | --- |
-| `--install` | Write the bus policy, the activation file and the unit that let the bus start this binary on demand, then return. A package does the same. |
+| `--install` | Write the bus policy, the polkit actions, the activation file and the unit that let the bus start this binary on demand, then return. A package does the same. |
 | `--idle-exit SECONDS` | Exit after this long without a call or a running job. Default: 60; `0` keeps serving. |
+
+## completions
+
+```text
+nspawn completions bash|zsh|fish
+```
+
+Writes the completions for that shell on standard output; they come from the
+same definition the command line itself is built from. The packages install
+them, so this is for a binary you built yourself:
+
+```shell
+nspawn completions bash > ~/.local/share/bash-completion/completions/nspawn
+```
+
+`man nspawn` is the same reference as this page, generated the same way.
 
 ### Unit hooks
 

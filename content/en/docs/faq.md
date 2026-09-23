@@ -74,8 +74,9 @@ manifests are not verified in this version.
 
 The first generation of nspawn was a shell wrapper around `machinectl` that
 downloaded `tar.xz` and `raw.xz` images from `hub.nspawn.org/storage`, signed
-with the nspawn.org master key and verified by systemd-importd. Version 0.2
-replaced it with the OCI based client described here: images are OCI images on
+with the nspawn.org master key and verified by systemd-importd. Its last
+release was 0.6; version 1.0 replaced it with the OCI based client described
+here: images are OCI images on
 a registry, layers are shared, and machinectl is no longer involved. The
 history of the old script is still in the
 [nspawn repository](https://github.com/nspawn/nspawn).
