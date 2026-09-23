@@ -44,7 +44,9 @@ on the bridge, the address and the default route, handed to systemd-nspawn with
 A generated `/etc/hosts`, mounted into every bridged machine, resolves the names
 of the other machines on the bridge and `host.nspawn.internal` for the host.
 On hosts with systemd 258 or newer, machined also lets the host resolve machine
-names by itself.
+names by itself. The bridge carries IPv4 only, so neither the machines nor the
+bridge get an IPv6 link-local address, and a machine's name leads to its bridge
+address: `ping web` from the host answers from `10.99.0.x`.
 
 ```shell
 sudo nspawn network ls

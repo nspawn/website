@@ -41,8 +41,8 @@ of them.
 On Fedora or RHEL with SELinux enforcing, the `nspawn-selinux` package carries
 the domain the service runs in; the RPM recommends it, so a plain `dnf install`
 of the package brings it along. Without it the service runs unconfined and the
-bus drops it when it passes a descriptor, which is what `exec`, `shell` and
-`logs` do: the rest of the commands work either way.
+bus drops it when it passes a descriptor, which is what `exec`, `shell`,
+`logs` and `cp` do: the rest of the commands work either way.
 
 To build it yourself you need a Rust toolchain of version 1.85 or newer:
 
@@ -64,7 +64,7 @@ system service is refused a binary under `/home`.
 
 On a host with SELinux enforcing, a binary installed by hand keeps the label of
 where it sits, and a service that is not `nspawn_exec_t` runs unconfined, so
-`exec`, `shell` and `logs` fail with the client disconnected. `daemon --install`
+`exec`, `shell`, `logs` and `cp` fail with the client disconnected. `daemon --install`
 says so, and this is the fix:
 
 ```shell

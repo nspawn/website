@@ -43,7 +43,9 @@ annotations to the manifest (`org.opencontainers.image.version` with the tag,
 `org.nspawn.builder`), verifies every blob against its digest, copies the blobs
 into the store and installs the image with the chosen backend, with `build` as
 its origin. The image can be started right away, cloned with `create` or
-pushed.
+pushed. The labels of its OCI configuration, which mkosi writes from
+`OciLabels=`, are kept with it: `nspawn inspect` shows them as `image_labels`,
+and they travel with the image when it is pushed.
 
 A minimal configuration for a bootable Fedora machine, taken from the test
 suite of nspawn:
@@ -55,6 +57,7 @@ Release=44
 
 [Output]
 ImageId=e2e-built
+OciLabels=org.nspawn.e2e=built
 
 [Content]
 Bootable=no

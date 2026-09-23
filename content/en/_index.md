@@ -55,8 +55,9 @@ machines. Remove an image and the layers nobody uses go with it.
 
 Images that ship systemd boot like `machinectl start` does. Anything else, for
 example a docker image, runs its entrypoint as an app under a stub init, with
-`-p`, `-e`, `-v` and `--entrypoint` as in docker. `ps`, `exec`, `shell`,
-`logs` and `stop` work the same on both.
+`-p`, `-e`, `-v`, `--label`, `--restart`, `-m` and `--entrypoint` as in docker.
+`ps`, `inspect`, `exec`, `shell`, `cp`, `logs`, `stop` and `rm` work the same on
+both.
 
 {{% /blocks/feature %}}
 
@@ -86,12 +87,17 @@ sudo nspawn images ls              # local images (all of them, not only ours)
 sudo nspawn start fedora-44        # boot it as a machine
 sudo nspawn create fedora-44 db    # another machine from the same image
 sudo nspawn start web -p 8080:80 -e KEY=v -v /srv/data:/data -v pgdata:/var/lib/pg
+sudo nspawn start db --restart unless-stopped -m 512m   # back when it dies, and at boot
 sudo nspawn ps                     # running machines: image, mode, command, uptime
+sudo nspawn inspect web            # everything about a machine, as JSON
+sudo nspawn cp ./nginx.conf web:/etc/nginx/
 sudo nspawn exec fedora-44 -- systemctl is-system-running
 sudo nspawn shell fedora-44
 sudo nspawn logs fedora-44         # console output; --inside reads its journal
 sudo nspawn stop fedora-44
+sudo nspawn rm -f db               # remove a machine, stopping it first
 sudo nspawn images rm fedora-44    # also frees layers and blobs nobody uses
+sudo nspawn volume ls              # named volumes and who uses them
 
 sudo nspawn build -t team/app:1 ./app   # mkosi --format=oci, imported as an image
 sudo nspawn push team/app:1             # upload it; layers already there are skipped

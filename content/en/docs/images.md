@@ -139,7 +139,7 @@ one), and then:
    the image can be pushed or cloned later.
 
 An image with the same name is not replaced unless you pass `--force`, and
-never while its machine is running. The old image only goes once the new one
+never while its machine is running, starting or being restarted by its policy. The old image only goes once the new one
 is downloaded, and the store is locked only for that last step, so a long
 download holds up neither other commands nor the unit hooks.
 
@@ -183,8 +183,9 @@ the image; [Machines](/docs/machines/) explains how it changes `start`, `exec`,
 ## More machines from one image
 
 ```shell
-sudo nspawn create SOURCE NAME [--backend BACKEND] [--network NETWORK] [-p HOST:CONTAINER]...
-                   [--entrypoint PROGRAM] [-e VAR=VALUE]... [-v SOURCE:TARGET[:ro]]... [-f] [-- ARGUMENTS...]
+sudo nspawn create SOURCE NAME [--backend BACKEND] [--network NETWORK] [-p HOST:CONTAINER[/udp]]...
+                   [--entrypoint PROGRAM] [-e VAR[=VALUE]]... [-v SOURCE:TARGET[:ro]]... [-l KEY=VALUE]...
+                   [--restart POLICY] [-m SIZE] [--cpus N] [--pids-limit N] [-f] [-- ARGUMENTS...]
 ```
 
 `create` is `docker create`: another machine from an image that is already
@@ -195,7 +196,8 @@ an address, settings and a record of its own, with `create` as its origin;
 
 The network kind is inherited from the source unless `--network` says
 otherwise; published ports are not, since two machines cannot publish the same
-one. `--entrypoint`, `-e` and the arguments after `--` apply to app images only
+one, and neither are the source's labels, restart policy, limits, variables or
+volumes: a new machine only gets what its own command line gives. `--entrypoint`, `-e` and the arguments after `--` apply to app images only
 and mean the same as on `start`; `-v` works for both kinds. Everything on the
 command line is checked before anything is made, so a refused `create` leaves
 nothing behind. `pull --name` ends up the same way, but resolves the manifest
@@ -223,7 +225,9 @@ create (`old-arch` above, with `-` in the nspawn columns). `ORIGIN` is `pull`,
 sudo nspawn images rm NAME...
 ```
 
-`images rm` refuses to remove the image of a running machine.
+`images rm` refuses to remove the image of a running machine, or of one its
+restart policy is bringing back; `nspawn rm -f` stops it first. A pulled image
+is a machine too, so `nspawn rm NAME` removes the same thing.
 For an image nspawn manages it unmounts and deletes the assembled root, the
 settings file, the generated units and drop-ins, the network namespace of an
 app and the record; for any other image, or for the leftovers of a failed
@@ -231,7 +235,10 @@ install, it removes what it finds and asks machined to forget the rest.
 Afterwards the layers and blobs that no remaining image references are
 deleted, the `/etc/hosts` files of the machines on the bridge are regenerated
 and the published ports are brought in line with the machines that still run.
-Named volumes are not deleted: they may belong to another machine.
+Named volumes are not deleted: they may belong to another machine. `nspawn
+volume ls` shows them and `volume rm` or `volume prune` removes the unused ones.
+
+`images ls --json` prints the list as the service returns it.
 
 ## Where things live
 
@@ -242,7 +249,8 @@ Named volumes are not deleted: they may belong to another machine.
 | `/var/lib/nspawn/` | nspawn's own state: blobs as downloaded, extracted layers, image records, stored manifests, the private upper directories of overlay machines, the generated network files and units of each machine, mkosi build output and cache, and the store lock. |
 | `/var/lib/nspawn/volumes/NAME` | A named volume (`-v NAME:/inside`). |
 | `/etc/systemd/nspawn/NAME.nspawn` | The settings nspawn generates for a machine; regenerated at every `start`. |
-| `/etc/systemd/system/systemd-nspawn@NAME.service.d/` | The drop-in with the unit hooks and, for an overlay machine, the one that requires its mount unit. The mount unit itself is next to them in `/etc/systemd/system/`. |
+| `/etc/systemd/system/systemd-nspawn@NAME.service.d/` | The drop-in with the unit hooks (and the machine's `Restart=`, `MemoryMax=`, `MemorySwapMax=`, `CPUQuota=` and `TasksMax=` when it has them) and, for an overlay machine, the one that requires its mount unit. The mount unit itself is next to them in `/etc/systemd/system/`. |
+| `/etc/systemd/system/machines.target.wants/systemd-nspawn@NAME.service` | The boot link of a machine with `--restart always` or `unless-stopped`; `rm` removes it. |
 | `/etc/nspawn/nspawn.toml` | The [configuration file](/docs/configuration/), optional. |
 | `/usr/lib/systemd/system/nspawn.service`, `/usr/share/dbus-1/system.d/org.nspawn.conf`, `/usr/share/polkit-1/actions/org.nspawn.policy` | The service, its bus policy and its polkit actions, as a package installs them. `nspawn daemon --install` writes the unit and the bus policy under `/etc` instead, where they take precedence, and the actions in the same place as the packages. |
 | `/etc/nspawn/auth.json` | The credentials `login` stored, mode 0600. |
