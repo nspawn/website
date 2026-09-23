@@ -8,8 +8,9 @@ description: >-
 ---
 
 Every one of these commands is a call to the
-[service](/docs/overview/#the-service) on the system bus, which is why they run
-with `sudo` for now.
+[service](/docs/overview/#the-service) on the system bus, which asks polkit
+whether you may: `sudo` always works, and a rule can let your group through
+without a password. The examples here use `sudo`.
 
 Every machine nspawn starts is the systemd unit `systemd-nspawn@NAME.service`,
 registered with systemd-machined under its name. `machinectl list`,

@@ -18,14 +18,16 @@ description: >-
 - **iproute2** and **nftables** (`ip` and `nft`) for the bridge network. Nothing
   else: the bridge does not need systemd-networkd or NetworkManager on the host.
   Only `--network veth` needs systemd-networkd.
-- **Root**, for now. Every command is a call to the
-  [service](/docs/overview/#the-service) on the system bus, whose policy lets
-  root call it; polkit, and with it the rule that hands the actions to a group
-  like `wheel`, is [what comes next](/docs/overview/#the-service), so the
-  commands below run with `sudo`.
+- **Root, or an administrator with polkit.** Every command is a call to the
+  [service](/docs/overview/#the-service) on the system bus, which asks polkit
+  who you are: root is never asked, an administrator is asked for a password,
+  and a polkit rule can hand the actions to a group. The examples below use
+  `sudo`, which works everywhere, including hosts without polkit.
 - **D-Bus inside a booted machine** for `shell`, which uses machined's login
   session; the hub images have it. `exec` enters the machine's namespaces and
   needs nothing inside.
+- **polkit** if anyone other than root is to run the commands. The packages
+  recommend it; without it the service answers root alone.
 - **mkosi** only if you want to [build images](/docs/building/).
 
 ## Installation

@@ -56,19 +56,26 @@ network and credentials are methods, the long operations (pull, push, build,
 create) come back as job objects that report their output and result, and `exec`
 hands the command's terminal over the bus.
 
-That is why the commands run with `sudo` for now. The bus policy lets root call
-the service and nobody else, so `nspawn ps` needs root today just as
-`nspawn pull` does. What will replace that is polkit, the way machined and
-systemd decide who may touch a machine or a unit: the service will ask polkit
-whether the caller may take an action (`org.nspawn.manage-machines`,
-`org.nspawn.manage-images` and friends), reading operations will need no
-authorization and the rest will ask for a password once. Until then, `sudo`.
+Who may call what is polkit's answer, the way it is for machined and systemd.
+The bus lets everyone in and the service asks polkit about the caller, under
+two actions:
 
-Once it is there, a host that would rather not ask at all can say so in a rule
-of its own, in `/etc/polkit-1/rules.d/50-nspawn.rules`:
+| Action | Methods |
+| --- | --- |
+| `org.nspawn.inspect` | The ones that only read: `images ls`, `ps` and `machines ls`, `network ls`. |
+| `org.nspawn.manage` | Everything else: pulling, building, starting, stopping, `exec`, `shell`, `logs`, the registry commands and the credentials. |
+
+Both are for administrators by default, so `sudo nspawn ...` works as it always
+did, and a desktop session (or a terminal where you started `pkttyagent`) is
+asked for a password instead. Root is never asked, which is also how the
+service keeps working where polkit is not installed: there, nobody but root can
+call it.
+
+To drive nspawn without a password, an administrator hands an action to a group
+in a rule of their own. The packages ship one as an example in their
+documentation directory; copy it to `/etc/polkit-1/rules.d/50-nspawn.rules`:
 
 ```javascript
-/* Let the wheel group manage machines and images without becoming root. */
 polkit.addRule(function (action, subject) {
     if (action.id.startsWith("org.nspawn.") && subject.isInGroup("wheel")) {
         return polkit.Result.YES;
@@ -76,11 +83,10 @@ polkit.addRule(function (action, subject) {
 });
 ```
 
-That is the same shape as the rule people write for `run0` or for
-`systemd1.manage-units`, and it means what it says: whoever is in that group
-can start machines, mount host directories into them and run commands as root
-inside, so it is a decision to take deliberately. The rule has no effect while
-the service still requires root.
+Everyone in that group can then run commands as root inside a machine and mount
+any path of the host into one, which is to say they are administrators of the
+host. Granting `org.nspawn.inspect` alone is the mild version: looking, without
+touching.
 
 A package installs the service; for a binary you built yourself,
 `sudo nspawn daemon --install` writes the bus policy, the activation file and

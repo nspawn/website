@@ -40,15 +40,18 @@ app image: its entrypoint runs under nspawn's stub init, on the bridge, with
 `sudo nspawn login docker.io -u USER` lifts that. See
 [Getting started](/docs/getting-started/#an-app-from-docker-hub).
 
-## Why does every command need root?
+## Do I need root?
 
-Because they all go through the service on the system bus, and its policy only
-lets root call it. The work itself does need privileges (machines live below
-`/var/lib/machines`, the bridge and its nftables rules are the host's), but
-listing images or reading logs does not, and the polkit rules that would open
-those to an authorized user are still to come. Until then, `sudo`. See
-[The service](/docs/overview/#the-service) for what that will look like, and
-for the rule that gives a group like `wheel` the actions once it does.
+Not necessarily. Every command goes through the service on the system bus, and
+the service asks polkit about the caller: root is never asked, an administrator
+is asked for a password (a desktop session prompts; in a plain terminal, start
+`pkttyagent` first), and a rule of your own can hand the actions to a group so
+that nobody is asked at all. The work does need privileges, since the machines
+live below `/var/lib/machines` and the bridge is the host's, which is why the
+service is the one holding them.
+
+On a host without polkit the service answers root alone. See
+[The service](/docs/overview/#the-service) for the two actions and the rule.
 
 ## What is the org.nspawn service?
 

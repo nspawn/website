@@ -11,7 +11,10 @@ are printed as `error: ...` on standard error and the exit status is 1;
 `exec` exits with the status of the command it ran.
 
 Every command is a call to the [service](/docs/overview/#the-service) on the
-system bus, whose policy lets root call it, so all of them need root for now.
+system bus, which asks polkit whether the caller may take the action: the ones
+that only read (`images ls`, `ps`, `machines ls`, `network ls`) ask for
+`org.nspawn.inspect`, the rest for `org.nspawn.manage`. Both are for
+administrators by default, and root is never asked.
 
 ## Global options
 

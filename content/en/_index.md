@@ -97,8 +97,9 @@ sudo nspawn build -t team/app:1 ./app   # mkosi --format=oci, imported as an ima
 sudo nspawn push team/app:1             # upload it; layers already there are skipped
 ```
 
-Every command is a call to nspawn's service on the system bus, which is why
-they run with `sudo` until the polkit rules land.
+Every command is a call to nspawn's service on the system bus, which asks
+polkit who you are: `sudo` always works, an administrator is asked for a
+password, and a rule of your own can hand the actions to a group.
 
 </div>
 
