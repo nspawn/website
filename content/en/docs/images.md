@@ -33,10 +33,10 @@ The hub is a plain OCI registry. `nspawn hub ls` lists its repositories with
 their tags, and `nspawn hub tags REPOSITORY` the tags of one of them:
 
 ```shell
-nspawn hub ls               # everything
-nspawn hub ls deb           # repositories whose name contains "deb"
-nspawn hub ls --no-tags     # faster on big registries
-nspawn hub tags fedora
+sudo nspawn hub ls           # everything
+sudo nspawn hub ls deb       # repositories whose name contains "deb"
+sudo nspawn hub ls --no-tags # faster on big registries
+sudo nspawn hub tags fedora
 ```
 
 The same commands work against any registry that implements the catalog
@@ -47,12 +47,26 @@ or `NSPAWN_CA_CERT`.
 The images on the hub are built with [mkosi](https://github.com/systemd/mkosi)
 from the public definitions in
 [nspawn/mkosi-definitions](https://github.com/nspawn/mkosi-definitions), with
-the package manager of each distribution.
+the package manager of each distribution, and rebuilt every week so that they
+carry the current security updates. They come in three kinds:
+
+| Kind | Images |
+| --- | --- |
+| Distributions | `debian`, `ubuntu`, `fedora`, `centos`, `almalinux`, `rockylinux`, `opensuse`, `archlinux`, `kali`, several releases each |
+| Services | `nginx`, `apache`, `caddy`, `haproxy`, `postgresql`, `mariadb`, `redis`, `valkey`, `memcached`, `rabbitmq`, `mosquitto`, `unbound`, `dnsmasq`, `bind9`, `samba`, `openssh`, `prometheus`, `node-exporter`, `grafana`, `wordpress`, `syncthing`, `forgejo` |
+| Machines to work in | `debian-devel`, `ubuntu-devel`, `fedora-devel`, `archlinux-devel`, `python`, `nodejs`, `golang`, `rust`, `openjdk` |
+
+A service image is a whole Debian machine with that service installed and
+enabled, so `shell` gets you a root shell and `systemctl status nginx` inside
+tells you what it is doing. Its tags carry the version of the service
+(`nginx:1.26.3`, `nginx:1.26`, `nginx:latest`), and every build also gets a
+dated tag (`nginx:1.26.3-20260923`) that never moves, so a machine can be
+pinned to one build. <https://hub.nspawn.org/> browses the lot.
 
 ## Searching
 
 ```shell
-nspawn search TERM [--source hub|dockerhub] [-n LIMIT]
+sudo nspawn search TERM [--source hub|dockerhub] [-n LIMIT]
 ```
 
 `search` is `docker search` across the sources nspawn knows: the configured
@@ -90,13 +104,12 @@ credentials are refused with a clear message. A registry that never asks for
 credentials gets them stored anyway, with a note saying so.
 
 Credentials are kept in `/etc/nspawn/auth.json`, mode 0600, in the `auth.json`
-format that podman and skopeo use. Credentials left on the host by
-`docker login` or `podman login` are picked up as well, from
-`$XDG_RUNTIME_DIR/containers/auth.json`, `/run/containers/0/auth.json`,
-`~/.docker/config.json` and `~/.config/containers/auth.json`, for root and for
-the user behind `sudo`. Every operation chooses the credentials of the registry
-it talks to, so the hub's never travel to Docker Hub; the many names of Docker
-Hub (`docker.io`, `index.docker.io`, `registry-1.docker.io`) are one entry.
+format that podman and skopeo use. That file is the only one consulted: the
+work happens in the service, which has no home directory of yours to look into,
+so what `docker login` or `podman login` left behind does not carry over. Every
+operation chooses the credentials of the registry it talks to, so the hub's
+never travel to Docker Hub; the many names of Docker Hub (`docker.io`,
+`index.docker.io`, `registry-1.docker.io`) are one entry.
 
 Docker Hub limits anonymous pulls per address; logging in lifts that. `push`
 authenticates before it uploads anything and, when the registry wants
@@ -108,7 +121,7 @@ credentials it does not have, says which `login` to run.
 sudo nspawn pull REFERENCE [--name NAME] [--backend BACKEND] [--mode MODE] [--force]
 ```
 
-`pull` needs root. It resolves the reference to the manifest for the host's
+It resolves the reference to the manifest for the host's
 platform (image indexes are followed), downloads every layer and the config
 blob that is not already in the store, checking each one against its sha256
 digest while it streams (a blob is written next to its final name and renamed
@@ -190,7 +203,7 @@ through the registry first.
 ## Listing and removing
 
 ```shell
-nspawn images ls
+sudo nspawn images ls
 ```
 
 ```text
@@ -209,7 +222,7 @@ create (`old-arch` above, with `-` in the nspawn columns). `ORIGIN` is `pull`,
 sudo nspawn images rm NAME...
 ```
 
-`images rm` needs root and refuses to remove the image of a running machine.
+`images rm` refuses to remove the image of a running machine.
 For an image nspawn manages it unmounts and deletes the assembled root, the
 settings file, the generated units and drop-ins, the network namespace of an
 app and the record; for any other image, or for the leftovers of a failed
@@ -230,6 +243,7 @@ Named volumes are not deleted: they may belong to another machine.
 | `/etc/systemd/nspawn/NAME.nspawn` | The settings nspawn generates for a machine; regenerated at every `start`. |
 | `/etc/systemd/system/systemd-nspawn@NAME.service.d/` | The drop-in with the unit hooks and, for an overlay machine, the one that requires its mount unit. The mount unit itself is next to them in `/etc/systemd/system/`. |
 | `/etc/nspawn/nspawn.toml` | The [configuration file](/docs/configuration/), optional. |
+| `/etc/systemd/system/nspawn.service`, `/etc/dbus-1/system.d/org.nspawn.conf` | The service and its bus policy, from a package or from `nspawn daemon --install`. |
 | `/etc/nspawn/auth.json` | The credentials `login` stored, mode 0600. |
 | `/run/netns/nspawn-NAME` | The network namespace of a running app machine on the bridge. |
 

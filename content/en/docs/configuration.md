@@ -50,9 +50,13 @@ dns = ["172.30.5.1", "9.9.9.9"]
 
 Changing `bridge` or `subnet` affects machines started afterwards; the address
 recorded for a machine is reassigned from the new subnet on its next start.
-When a machine is installed or started with `--config`, the unit hooks it gets
-carry the same `--config`, so the machine keeps using that file whoever starts
-it.
+
+The file is read by the service, so a change takes effect on its next start:
+`sudo systemctl restart nspawn.service` (or simply waiting for it to go idle)
+picks it up. When a machine is installed or started with `--config`, the unit
+hooks it gets carry the same `--config`, and so does the unit that
+`nspawn daemon --install` writes, so the machine keeps using that file whoever
+starts it.
 
 ## Environment variables
 
@@ -71,9 +75,9 @@ NSPAWN_REGISTRY=hub.nspawn.test:8443 NSPAWN_CA_CERT=/etc/zot/ca.crt nspawn hub l
 
 ## Credentials
 
-`nspawn login` keeps registry credentials in `/etc/nspawn/auth.json`, and
-credentials left by `docker login` or `podman login` are picked up from their
-usual files. See [Registries and credentials](/docs/images/#registries-and-credentials).
+`nspawn login` keeps registry credentials in `/etc/nspawn/auth.json`, and that
+file is the only one consulted. See
+[Registries and credentials](/docs/images/#registries-and-credentials).
 
 ## Per-machine choices
 

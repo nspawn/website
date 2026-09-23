@@ -20,13 +20,25 @@ Issues and pull requests are welcome in all of them. The
 ## Working on the tool
 
 A Rust toolchain of version 1.85 or newer is enough for the unit tests and
-clippy:
+clippy, which need no root and touch nothing outside temporary directories:
 
 ```shell
-cargo test
+cargo fmt
 cargo clippy --all-targets -- -D warnings
+cargo test
 cargo build --release
 ```
+
+The repository documents itself: `docs/HACKING.md` for building and testing,
+`docs/ARCHITECTURE.md` for how the pieces fit, `docs/DBUS.md` for the interface
+the service exposes, and `packaging/` for the Fedora, Arch and Debian packages
+and the SELinux policy. A pull request runs the checks and builds those
+packages.
+
+A binary you built has to be installed before it can serve:
+`sudo install -Dm755 target/release/nspawn /usr/local/bin/nspawn` followed by
+`sudo nspawn daemon --install`. Replacing the binary of a running service is
+fine; the next command starts the new one.
 
 The end-to-end test runs the built binary against a real registry and
 systemd-machined, as root, on a host with systemd-nspawn:

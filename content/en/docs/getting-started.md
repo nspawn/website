@@ -2,14 +2,15 @@
 title: Getting started
 weight: 2
 description: >-
-  Requirements, installation from source, a first machine pulled from the hub
-  and an app from Docker Hub.
+  Requirements, installation, a first machine pulled from the hub and an app
+  from Docker Hub.
 ---
 
 ## Requirements
 
-- A host with **systemd-nspawn** and **systemd-machined**. Any recent systemd
-  works; 259 and 261 are the versions the test suite runs against. cgroup v2 is
+- A host with **systemd-nspawn** and **systemd-machined**, version **255 or
+  newer** (255, 259 and 261 are the ones the test suite runs against; 252 cannot
+  mount the files nspawn generates under a machine's `/run`). cgroup v2 is
   required.
 - **overlayfs** for the `overlay` backend, which is the default on hosts older
   than systemd 261 and what app images always use. Without it images are
@@ -17,10 +18,10 @@ description: >-
 - **iproute2** and **nftables** (`ip` and `nft`) for the bridge network. Nothing
   else: the bridge does not need systemd-networkd or NetworkManager on the host.
   Only `--network veth` needs systemd-networkd.
-- **Root** for the commands that change the host: `pull`, `create`, `build`,
-  `images rm`, `start`, `stop`, `login` and `logout` write below
-  `/var/lib/machines`, `/var/lib/nspawn`, `/etc/systemd` and `/etc/nspawn`.
-  Listing, `search`, `logs`, `exec`, `shell` and `hub` do not need it.
+- **Root**, for now. Every command is a call to the
+  [service](/docs/overview/#the-service) on the system bus, whose policy lets
+  root call it; the polkit rules that would open it to other users are still to
+  come, so the commands below run with `sudo`.
 - **D-Bus inside a booted machine** for `shell`, which uses machined's login
   session; the hub images have it. `exec` enters the machine's namespaces and
   needs nothing inside.
@@ -28,22 +29,30 @@ description: >-
 
 ## Installation
 
-nspawn is a single binary. Build it with a Rust toolchain of version 1.85 or
-newer:
+A package brings the binary and the service it runs as. The
+[releases](https://github.com/nspawn/nspawn/releases) carry an RPM for Fedora, a
+package for Arch and a `.deb` built on Ubuntu 24.04 that also fits later Debian
+and Ubuntu releases. On a host with SELinux enforcing, install the
+`nspawn-selinux` package as well: without its policy the bus refuses to hand
+descriptors to the service.
+
+To build it yourself you need a Rust toolchain of version 1.85 or newer:
 
 ```shell
 git clone https://github.com/nspawn/nspawn.git
 cd nspawn
 cargo build --release
 sudo install -Dm755 target/release/nspawn /usr/local/bin/nspawn
+sudo nspawn daemon --install
 nspawn --version
 ```
 
-Install it in `/usr/local/bin` or `/usr/bin`, not below a home directory: the
-unit of every machine calls nspawn by the path it was installed from, and on
-SELinux hosts a system service is refused a binary under `/home`. The release
-profile uses thin LTO and strips the binary, so the result is small and depends
-on nothing but glibc.
+`daemon --install` writes the bus policy, the activation file and the unit that
+let the bus start the service on demand, naming the binary you just installed; a
+package does the same for you. Install the binary in `/usr/local/bin` or
+`/usr/bin`, not below a home directory: the unit of every machine calls nspawn by
+the path it was installed from, and on SELinux hosts a system service is refused
+a binary under `/home`.
 
 ## A first machine
 
@@ -51,13 +60,14 @@ Find an image. `search` asks the hub and Docker Hub and prints, for every hit,
 the reference `pull` takes:
 
 ```shell
-nspawn search fedora
+sudo nspawn search fedora
 ```
 
 ```text
- SOURCE          NAME                        DESCRIPTION                                  STARS  OFFICIAL
- hub.nspawn.org  fedora                      tags: 43, 44                                 -      -
- Docker Hub      docker.io/library/fedora    Official Docker builds of Fedora             1300   yes
+ SOURCE          NAME                      DESCRIPTION                           STARS  OFFICIAL
+ hub.nspawn.org  fedora                    tags: 43, 44, latest, rawhide         -      -
+ hub.nspawn.org  fedora-devel              tags: 44, latest                      -      -
+ Docker Hub      docker.io/library/fedora  Official Docker builds of Fedora      1300   yes
  ...
 ```
 
@@ -82,7 +92,7 @@ holds the settings nspawn boots it with, and a drop-in of
 
 ```shell
 sudo nspawn start fedora-44
-nspawn ps
+sudo nspawn ps
 ```
 
 ```text
@@ -95,8 +105,8 @@ right away. `exec` runs it inside and brings back its exit code; `shell` opens
 a login session as root:
 
 ```shell
-nspawn exec fedora-44 -- systemctl is-system-running
-nspawn shell fedora-44
+sudo nspawn exec fedora-44 -- systemctl is-system-running
+sudo nspawn shell fedora-44
 ```
 
 The hub images log in as `root` without a password on the console. What the
@@ -104,8 +114,8 @@ machine printed is in `logs`, and `--inside` reads the journal of the machine
 itself:
 
 ```shell
-nspawn logs fedora-44
-nspawn logs fedora-44 --inside -n 50
+sudo nspawn logs fedora-44
+sudo nspawn logs fedora-44 --inside -n 50
 ```
 
 Stop it and, when you no longer need it, remove it. Removing an image also frees
@@ -123,11 +133,11 @@ under a stub init, on the bridge like any other machine, so `-p` publishes its
 ports on the host:
 
 ```shell
-nspawn search nginx --source dockerhub
+sudo nspawn search nginx --source dockerhub
 sudo nspawn pull docker.io/library/nginx:latest --name web
 sudo nspawn start web -p 8080:80
 curl -sI http://localhost:8080/ | head -1
-nspawn logs web -f
+sudo nspawn logs web -f
 sudo nspawn stop web
 ```
 

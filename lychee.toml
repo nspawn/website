@@ -22,6 +22,10 @@ exclude = [
   # The hub is an OCI registry, not a web site: it answers on /v2/ only.
   '^https://hub\.nspawn\.org',
 
+  # freedesktop.org answers 418 to the checker from a CI runner (the systemd manual
+  # pages are fine in a browser).
+  '^https://www\.freedesktop\.org/',
+
   # Chat clients: single-page apps whose room fragments cannot be checked.
   '^https://matrix\.to/',
   '^https://web\.libera\.chat/',

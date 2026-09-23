@@ -26,9 +26,8 @@ machines with a docker-like workflow:
 - Machines are started, inspected and stopped through the D-Bus APIs of
   [systemd-machined](https://www.freedesktop.org/software/systemd/man/latest/systemd-machined.service.html)
   and of systemd itself. `machinectl` and `importctl` are never called, and
-  there is no daemon of nspawn's own: every machine is an ordinary
-  `systemd-nspawn@NAME.service` unit that `machinectl`, `systemctl` and
-  `journalctl` see like any other. A drop-in makes that unit call nspawn before
+  every machine is an ordinary `systemd-nspawn@NAME.service` unit that
+  `machinectl`, `systemctl` and `journalctl` see like any other. A drop-in makes that unit call nspawn before
   the machine starts, once it runs and after it ends, so `machinectl start`, a
   unit enabled at boot or a crash get the same network setup and cleanup as
   `nspawn start` and `nspawn stop`.
@@ -39,10 +38,35 @@ machines with a docker-like workflow:
   as a local image; `push` uploads an image to a registry, skipping the layers
   that are already there.
 
-It is a single binary written in Rust. Its own state lives under
-`/var/lib/nspawn`, the assembled machines under `/var/lib/machines`, and
-everything it generates on the host is a plain systemd unit, drop-in or
-`.nspawn` settings file that you can read.
+The work is done by a service on the system bus, `org.nspawn`, and the command
+line is one of its clients, the way `machinectl` and `systemctl` are clients of
+machined and systemd. The service is started by the bus when a command arrives
+and exits when it has been idle for a while; nothing runs in the background
+otherwise. See [The service](#the-service).
+
+It is one binary written in Rust. Its own state lives under `/var/lib/nspawn`,
+the assembled machines under `/var/lib/machines`, and everything it generates on
+the host is a plain systemd unit, drop-in or `.nspawn` settings file that you can
+read.
+
+## The service
+
+Every command is a method call on `org.nspawn.Manager`: images, machines, the
+network and credentials are methods, the long operations (pull, push, build,
+create) come back as job objects that report their output and result, and `exec`
+hands the command's terminal over the bus.
+
+That is why the commands run with `sudo` for now. The bus policy lets root call
+the service, and the polkit rules that would open it to an authorized user are
+still to come, so `nspawn ps` needs root today just as `nspawn pull` does.
+
+A package installs the service; for a binary you built yourself,
+`sudo nspawn daemon --install` writes the bus policy, the activation file and
+the unit and tells the bus about them. Its journal is the usual one:
+
+```shell
+journalctl -u nspawn.service
+```
 
 ## Machines and apps
 
@@ -71,7 +95,7 @@ systemd-nspawn virtual ethernet pair configured by systemd-networkd. See
 
 | Piece | Where | Role |
 | --- | --- | --- |
-| `nspawn` | [github.com/nspawn/nspawn](https://github.com/nspawn/nspawn) | The command line tool this documentation is about. |
+| `nspawn` | [github.com/nspawn/nspawn](https://github.com/nspawn/nspawn) | The tool this documentation is about: the service and its command line. |
 | The hub | `hub.nspawn.org` | An OCI registry with the images the team publishes. It is the default registry of the tool. |
 | mkosi definitions | [github.com/nspawn/mkosi-definitions](https://github.com/nspawn/mkosi-definitions) | The public mkosi configuration the hub images are built from. |
 | Blog | [blog.nspawn.org](https://blog.nspawn.org/) | Release notes and news. |
@@ -79,7 +103,9 @@ systemd-nspawn virtual ethernet pair configured by systemd-networkd. See
 ## What nspawn is not
 
 - It is not a container runtime of its own: systemd-nspawn runs the machines,
-  systemd supervises them, machined tracks them. nspawn only drives them.
+  systemd supervises them, machined tracks them. nspawn only drives them, and
+  its own service holds no machine open: it is started on demand and goes away
+  again.
 - It is not an orchestrator. There is no compose file, no service discovery
   beyond the names on the bridge, no scheduling.
 - It does not build images by itself: `build` needs
