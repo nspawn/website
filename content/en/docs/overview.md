@@ -57,8 +57,30 @@ create) come back as job objects that report their output and result, and `exec`
 hands the command's terminal over the bus.
 
 That is why the commands run with `sudo` for now. The bus policy lets root call
-the service, and the polkit rules that would open it to an authorized user are
-still to come, so `nspawn ps` needs root today just as `nspawn pull` does.
+the service and nobody else, so `nspawn ps` needs root today just as
+`nspawn pull` does. What will replace that is polkit, the way machined and
+systemd decide who may touch a machine or a unit: the service will ask polkit
+whether the caller may take an action (`org.nspawn.manage-machines`,
+`org.nspawn.manage-images` and friends), reading operations will need no
+authorization and the rest will ask for a password once. Until then, `sudo`.
+
+Once it is there, a host that would rather not ask at all can say so in a rule
+of its own, in `/etc/polkit-1/rules.d/50-nspawn.rules`:
+
+```javascript
+/* Let the wheel group manage machines and images without becoming root. */
+polkit.addRule(function (action, subject) {
+    if (action.id.startsWith("org.nspawn.") && subject.isInGroup("wheel")) {
+        return polkit.Result.YES;
+    }
+});
+```
+
+That is the same shape as the rule people write for `run0` or for
+`systemd1.manage-units`, and it means what it says: whoever is in that group
+can start machines, mount host directories into them and run commands as root
+inside, so it is a decision to take deliberately. The rule has no effect while
+the service still requires root.
 
 A package installs the service; for a binary you built yourself,
 `sudo nspawn daemon --install` writes the bus policy, the activation file and

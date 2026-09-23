@@ -20,8 +20,9 @@ description: >-
   Only `--network veth` needs systemd-networkd.
 - **Root**, for now. Every command is a call to the
   [service](/docs/overview/#the-service) on the system bus, whose policy lets
-  root call it; the polkit rules that would open it to other users are still to
-  come, so the commands below run with `sudo`.
+  root call it; polkit, and with it the rule that hands the actions to a group
+  like `wheel`, is [what comes next](/docs/overview/#the-service), so the
+  commands below run with `sudo`.
 - **D-Bus inside a booted machine** for `shell`, which uses machined's login
   session; the hub images have it. `exec` enters the machine's namespaces and
   needs nothing inside.

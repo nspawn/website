@@ -46,7 +46,9 @@ Because they all go through the service on the system bus, and its policy only
 lets root call it. The work itself does need privileges (machines live below
 `/var/lib/machines`, the bridge and its nftables rules are the host's), but
 listing images or reading logs does not, and the polkit rules that would open
-those to an authorized user are still to come. Until then, `sudo`.
+those to an authorized user are still to come. Until then, `sudo`. See
+[The service](/docs/overview/#the-service) for what that will look like, and
+for the rule that gives a group like `wheel` the actions once it does.
 
 ## What is the org.nspawn service?
 
