@@ -34,9 +34,9 @@ Images from an OCI hub, shared layers, and systemd all the way down.
 nspawn pulls OCI images from [the hub](docs/images/#the-hub) at
 `hub.nspawn.org`, from Docker Hub or from any other registry, stores them as
 shared layers and starts, inspects and stops the machines through the D-Bus
-APIs of systemd-machined and systemd itself. No daemon of its own, no
-`machinectl`, no `importctl`: the machines are ordinary
-`systemd-nspawn@.service` units that the rest of the system already knows.
+APIs of systemd-machined and systemd itself. No `machinectl`, no `importctl`:
+the machines are ordinary `systemd-nspawn@.service` units that the rest of the
+system already knows.
 
 {{% /blocks/lead %}}
 
@@ -78,24 +78,28 @@ all.
 ## The whole tool in a screenful
 
 ```shell
-nspawn hub ls                     # repositories and tags on the hub
-nspawn search fedora              # images on the hub and on Docker Hub
-sudo nspawn login docker.io -u me # credentials for a registry (the hub by default)
-sudo nspawn pull fedora:44        # download and assemble an image
-nspawn images ls                  # local images (all of them, not only ours)
-sudo nspawn start fedora-44       # boot it as a machine
-sudo nspawn create fedora-44 db   # another machine from the same image
+sudo nspawn hub ls                 # repositories and tags on the hub
+sudo nspawn search fedora          # images on the hub and on Docker Hub
+sudo nspawn login docker.io -u me  # credentials for a registry (the hub by default)
+sudo nspawn pull fedora:44         # download and assemble an image
+sudo nspawn images ls              # local images (all of them, not only ours)
+sudo nspawn start fedora-44        # boot it as a machine
+sudo nspawn create fedora-44 db    # another machine from the same image
 sudo nspawn start web -p 8080:80 -e KEY=v -v /srv/data:/data -v pgdata:/var/lib/pg
-nspawn ps                         # running machines: image, mode, command, uptime
-nspawn exec fedora-44 -- systemctl is-system-running
-nspawn shell fedora-44
-nspawn logs fedora-44             # console output; --inside reads its journal
+sudo nspawn ps                     # running machines: image, mode, command, uptime
+sudo nspawn exec fedora-44 -- systemctl is-system-running
+sudo nspawn shell fedora-44
+sudo nspawn logs fedora-44         # console output; --inside reads its journal
 sudo nspawn stop fedora-44
-sudo nspawn images rm fedora-44   # also frees layers and blobs nobody uses
+sudo nspawn images rm fedora-44    # also frees layers and blobs nobody uses
 
 sudo nspawn build -t team/app:1 ./app   # mkosi --format=oci, imported as an image
-nspawn push team/app:1                  # upload it; layers already there are skipped
+sudo nspawn push team/app:1             # upload it; layers already there are skipped
 ```
+
+Every command is a call to nspawn's service on the system bus, which asks
+polkit who you are: `sudo` always works, an administrator is asked for a
+password, and a rule of your own can hand the actions to a group.
 
 </div>
 

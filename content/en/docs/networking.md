@@ -47,7 +47,7 @@ On hosts with systemd 258 or newer, machined also lets the host resolve machine
 names by itself.
 
 ```shell
-nspawn network ls
+sudo nspawn network ls
 ```
 
 ```text
@@ -89,9 +89,12 @@ a machine on the host's network listens on the host's ports directly.
   then adds two rules to the `DOCKER-USER` chain, which docker reserves for
   that, or to the top of `FORWARD` itself: anything out of the bridge, and into
   the bridge only what was published or belongs to a connection a machine
-  opened. Nothing happens on hosts without iptables.
-- A hand-written nftables firewall with a drop policy on forward needs the same
-  exception by hand.
+  opened. That needs the `iptables` command, which those tools bring with them.
+- Where something else drops forwarded traffic, a hand-written nftables
+  firewall or those same rules without the `iptables` command to edit them,
+  `start` says so and the exception has to be made by hand. Without it the
+  machines reach nothing beyond the bridge and published ports answer on this
+  host alone.
 
 ## veth
 

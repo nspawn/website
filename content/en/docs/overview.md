@@ -26,9 +26,8 @@ machines with a docker-like workflow:
 - Machines are started, inspected and stopped through the D-Bus APIs of
   [systemd-machined](https://www.freedesktop.org/software/systemd/man/latest/systemd-machined.service.html)
   and of systemd itself. `machinectl` and `importctl` are never called, and
-  there is no daemon of nspawn's own: every machine is an ordinary
-  `systemd-nspawn@NAME.service` unit that `machinectl`, `systemctl` and
-  `journalctl` see like any other. A drop-in makes that unit call nspawn before
+  every machine is an ordinary `systemd-nspawn@NAME.service` unit that
+  `machinectl`, `systemctl` and `journalctl` see like any other. A drop-in makes that unit call nspawn before
   the machine starts, once it runs and after it ends, so `machinectl start`, a
   unit enabled at boot or a crash get the same network setup and cleanup as
   `nspawn start` and `nspawn stop`.
@@ -39,10 +38,63 @@ machines with a docker-like workflow:
   as a local image; `push` uploads an image to a registry, skipping the layers
   that are already there.
 
-It is a single binary written in Rust. Its own state lives under
-`/var/lib/nspawn`, the assembled machines under `/var/lib/machines`, and
-everything it generates on the host is a plain systemd unit, drop-in or
-`.nspawn` settings file that you can read.
+The work is done by a service on the system bus, `org.nspawn`, and the command
+line is one of its clients, the way `machinectl` and `systemctl` are clients of
+machined and systemd. The service is started by the bus when a command arrives
+and exits when it has been idle for a while; nothing runs in the background
+otherwise. See [The service](#the-service).
+
+It is one binary written in Rust. Its own state lives under `/var/lib/nspawn`,
+the assembled machines under `/var/lib/machines`, and everything it generates on
+the host is a plain systemd unit, drop-in or `.nspawn` settings file that you can
+read.
+
+## The service
+
+Every command is a method call on `org.nspawn.Manager`: images, machines, the
+network and credentials are methods, the long operations (pull, push, build,
+create) come back as job objects that report their output and result, and `exec`
+hands the command's terminal over the bus.
+
+Who may call what is polkit's answer, the way it is for machined and systemd.
+The bus lets everyone in and the service asks polkit about the caller, under
+two actions:
+
+| Action | Methods |
+| --- | --- |
+| `org.nspawn.inspect` | The ones that only read: `images ls`, `ps` and `machines ls`, `network ls`. |
+| `org.nspawn.manage` | Everything else: pulling, building, starting, stopping, `exec`, `shell`, `logs`, the registry commands and the credentials. |
+
+Both are for administrators by default, so `sudo nspawn ...` works as it always
+did, and a desktop session (or a terminal where you started `pkttyagent`) is
+asked for a password instead. Root is never asked, which is also how the
+service keeps working where polkit is not installed: there, nobody but root can
+call it.
+
+To drive nspawn without a password, an administrator hands an action to a group
+in a rule of their own. The packages ship one as an example in their
+documentation directory; copy it to `/etc/polkit-1/rules.d/50-nspawn.rules`:
+
+```javascript
+polkit.addRule(function (action, subject) {
+    if (action.id.startsWith("org.nspawn.") && subject.isInGroup("wheel")) {
+        return polkit.Result.YES;
+    }
+});
+```
+
+Everyone in that group can then run commands as root inside a machine and mount
+any path of the host into one, which is to say they are administrators of the
+host. Granting `org.nspawn.inspect` alone is the mild version: looking, without
+touching.
+
+A package installs the service; for a binary you built yourself,
+`sudo nspawn daemon --install` writes the bus policy, the activation file and
+the unit and tells the bus about them. Its journal is the usual one:
+
+```shell
+journalctl -u nspawn.service
+```
 
 ## Machines and apps
 
@@ -71,7 +123,7 @@ systemd-nspawn virtual ethernet pair configured by systemd-networkd. See
 
 | Piece | Where | Role |
 | --- | --- | --- |
-| `nspawn` | [github.com/nspawn/nspawn](https://github.com/nspawn/nspawn) | The command line tool this documentation is about. |
+| `nspawn` | [github.com/nspawn/nspawn](https://github.com/nspawn/nspawn) | The tool this documentation is about: the service and its command line. |
 | The hub | `hub.nspawn.org` | An OCI registry with the images the team publishes. It is the default registry of the tool. |
 | mkosi definitions | [github.com/nspawn/mkosi-definitions](https://github.com/nspawn/mkosi-definitions) | The public mkosi configuration the hub images are built from. |
 | Blog | [blog.nspawn.org](https://blog.nspawn.org/) | Release notes and news. |
@@ -79,7 +131,9 @@ systemd-nspawn virtual ethernet pair configured by systemd-networkd. See
 ## What nspawn is not
 
 - It is not a container runtime of its own: systemd-nspawn runs the machines,
-  systemd supervises them, machined tracks them. nspawn only drives them.
+  systemd supervises them, machined tracks them. nspawn only drives them, and
+  its own service holds no machine open: it is started on demand and goes away
+  again.
 - It is not an orchestrator. There is no compose file, no service discovery
   beyond the names on the bridge, no scheduling.
 - It does not build images by itself: `build` needs

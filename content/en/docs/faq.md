@@ -16,9 +16,9 @@ are public.
 
 ## Do I need systemd?
 
-Yes. nspawn drives systemd-nspawn through systemd-machined and the systemd
-service manager, so the host needs both, with cgroup v2. The images on the hub
-contain systemd as well; images without an init system run as
+Yes, version 255 or newer. nspawn drives systemd-nspawn through systemd-machined
+and the systemd service manager, so the host needs both, with cgroup v2. The
+images on the hub contain systemd as well; images without an init system run as
 [apps](/docs/machines/#app-machines).
 
 ## Is this docker?
@@ -27,11 +27,12 @@ No. The commands and flags look alike on purpose (`-p`, `-e`, `-v`,
 `--entrypoint`, `create`, `exec`, `logs`), but the machines are systemd-nspawn
 containers managed by systemd: they are `systemd-nspawn@NAME.service` units,
 appear in `machinectl list`, log to the journal and boot a full init when the
-image has one. There is no daemon, no compose file and no orchestration.
+image has one. nspawn's own service holds none of them open, there is no compose
+file and no orchestration.
 
 ## Can I run images from Docker Hub?
 
-Yes. `nspawn search nginx` finds them, and
+Yes. `sudo nspawn search nginx` finds them, and
 `sudo nspawn pull docker.io/library/nginx:latest --name web` fetches one like
 any other registry image. Since it has no init system, it is installed as an
 app image: its entrypoint runs under nspawn's stub init, on the bridge, with
@@ -39,12 +40,29 @@ app image: its entrypoint runs under nspawn's stub init, on the bridge, with
 `sudo nspawn login docker.io -u USER` lifts that. See
 [Getting started](/docs/getting-started/#an-app-from-docker-hub).
 
-## Why do most commands need root?
+## Do I need root?
 
-`pull`, `create`, `build`, `images rm`, `start`, `stop`, `login` and `logout`
-write below `/var/lib/machines`, `/var/lib/nspawn`, `/etc/systemd` and
-`/etc/nspawn`, and `start` and `stop` also change the bridge and its nftables
-rules. Listing, `search`, `logs`, `exec`, `shell` and `hub` work without it.
+Not necessarily. Every command goes through the service on the system bus, and
+the service asks polkit about the caller: root is never asked, an administrator
+is asked for a password (a desktop session prompts; in a plain terminal, start
+`pkttyagent` first), and a rule of your own can hand the actions to a group so
+that nobody is asked at all. The work does need privileges, since the machines
+live below `/var/lib/machines` and the bridge is the host's, which is why the
+service is the one holding them.
+
+On a host without polkit the service answers root alone. See
+[The service](/docs/overview/#the-service) for the two actions and the rule.
+
+## What is the org.nspawn service?
+
+Where the work happens. The command line is its client, the way `machinectl`
+and `systemctl` are clients of machined and systemd: every command is a method
+call, and pulls, pushes, builds and creates come back as job objects that report
+their output. The bus starts the service when a command arrives and it exits
+after a minute without work, so nothing of nspawn's runs in the background
+otherwise. A package installs it; for a binary you built yourself,
+`sudo nspawn daemon --install`. Its journal is `journalctl -u nspawn.service`,
+and the interface is described in `docs/DBUS.md` of the repository.
 
 ## Are the images signed?
 
@@ -101,7 +119,7 @@ and publishes the ports whoever starts the machine.
 
 ## How do I get a machine's address from the host?
 
-`nspawn ps` and `nspawn network ls` show it. Inside the machines, the other
+`sudo nspawn ps` and `sudo nspawn network ls` show it. Inside the machines, the other
 machines are reachable by name and the host as `host.nspawn.internal`; on hosts
 with systemd 258 or newer, machined resolves the machine names on the host as
 well.

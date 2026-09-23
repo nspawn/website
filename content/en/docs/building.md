@@ -80,7 +80,7 @@ sudo nspawn start team-app-1
 ## push
 
 ```shell
-nspawn push IMAGE [--to REFERENCE]
+sudo nspawn push IMAGE [--to REFERENCE]
 ```
 
 `IMAGE` is a local image name or the reference it was pulled from or built as.
@@ -88,8 +88,8 @@ By default the image is pushed under its own reference; `--to` pushes it under
 another one, for example to retag it or to send it to a different registry:
 
 ```shell
-nspawn push team/app:1
-nspawn push team-app-1 --to registry.example/team/app:2
+sudo nspawn push team/app:1
+sudo nspawn push team-app-1 --to registry.example/team/app:2
 ```
 
 `push` authenticates first, with the credentials stored for that registry, and

@@ -3,15 +3,18 @@ title: Command reference
 linkTitle: Reference
 weight: 8
 description: >-
-  Every command and option of nspawn 0.2.0.
+  Every command and option of nspawn 1.0.0.
 ---
 
 `nspawn --help` and `nspawn COMMAND --help` print the same information. Errors
 are printed as `error: ...` on standard error and the exit status is 1;
 `exec` exits with the status of the command it ran.
 
-Commands that change the host need root: `pull`, `create`, `build`,
-`images rm`, `start`, `stop`, `login` and `logout`. The others do not.
+Every command is a call to the [service](/docs/overview/#the-service) on the
+system bus, which asks polkit whether the caller may take the action: the ones
+that only read (`images ls`, `ps`, `machines ls`, `network ls`) ask for
+`org.nspawn.inspect`, the rest for `org.nspawn.manage`. Both are for
+administrators by default, and root is never asked.
 
 ## Global options
 
@@ -295,6 +298,20 @@ nspawn network ls
 
 Lists the machines on the bridge with their addresses and published ports.
 `network list` is an alias.
+
+## daemon
+
+```text
+nspawn daemon [--install] [--idle-exit SECONDS]
+```
+
+Serves `org.nspawn` on the system bus. The bus starts it on demand, so this is
+not a command to type; `--install` is.
+
+| Option | Meaning |
+| --- | --- |
+| `--install` | Write the bus policy, the activation file and the unit that let the bus start this binary on demand, then return. A package does the same. |
+| `--idle-exit SECONDS` | Exit after this long without a call or a running job. Default: 60; `0` keeps serving. |
 
 ### Unit hooks
 

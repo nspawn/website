@@ -7,6 +7,11 @@ description: >-
   differ.
 ---
 
+Every one of these commands is a call to the
+[service](/docs/overview/#the-service) on the system bus, which asks polkit
+whether you may: `sudo` always works, and a rule can let your group through
+without a password. The examples here use `sudo`.
+
 Every machine nspawn starts is the systemd unit `systemd-nspawn@NAME.service`,
 registered with systemd-machined under its name. `machinectl list`,
 `machinectl status NAME`, `systemctl status systemd-nspawn@NAME` and
@@ -25,7 +30,7 @@ nspawn belongs in `/usr/local/bin` or `/usr/bin`.
 ## start
 
 ```shell
-sudo nspawn start NAME [--network bridge|veth|host] [-p HOST:CONTAINER[/udp]]...
+sudo sudo nspawn start NAME [--network bridge|veth|host] [-p HOST:CONTAINER[/udp]]...
                   [--entrypoint PROGRAM] [-e VAR[=VALUE]]... [-v SOURCE:TARGET[:ro]]...
                   [--image-command] [--no-wait] [-- ARGUMENTS...]
 ```
@@ -156,7 +161,7 @@ there before the init even runs.
 ## ps
 
 ```shell
-nspawn ps [-a]           # same as: nspawn machines ls [-a]
+sudo nspawn ps [-a]      # same as: nspawn machines ls [-a]
 ```
 
 ```text
@@ -175,8 +180,8 @@ and `NETWORK` the bridge address with the published ports, or `host` or
 ## exec and shell
 
 ```shell
-nspawn exec MACHINE [-u USER] COMMAND...
-nspawn shell MACHINE [-u USER]
+sudo nspawn exec MACHINE [-u USER] COMMAND...
+sudo nspawn shell MACHINE [-u USER]
 ```
 
 `exec` runs one command inside a running machine of either kind, attached to
@@ -192,7 +197,7 @@ session for booted machines, `/bin/sh` in the machine's namespaces for apps.
 ## logs
 
 ```shell
-nspawn logs MACHINE [-f] [-n N] [--since WHEN] [-t] [--all] [--inside]
+sudo nspawn logs MACHINE [-f] [-n N] [--since WHEN] [-t] [--all] [--inside]
 ```
 
 systemd-nspawn sends what the machine writes to its console to the journal of
