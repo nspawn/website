@@ -161,8 +161,10 @@ sudo nspawn logs web -f
 sudo nspawn stop web
 ```
 
-The port and any other flag given to `start` are remembered, so the next
-`sudo nspawn start web` publishes it again. `stop` sends the image's stop
+`sudo nspawn run docker.io/library/nginx:latest --name web -p 8080:80` does the
+pull and the start in one step, like `docker run -d`. The port and any other
+flag given to `start` are remembered, so the next `sudo nspawn start web`
+publishes it again. `stop` sends the image's stop
 signal (`SIGQUIT` for nginx) to the program and kills the machine after ten
 seconds if it is still there; `-t` changes the grace period.
 

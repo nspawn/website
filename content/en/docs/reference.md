@@ -3,7 +3,7 @@ title: Command reference
 linkTitle: Reference
 weight: 8
 description: >-
-  Every command and option of nspawn 1.1.0.
+  Every command and option of nspawn 1.1.2.
 ---
 
 `nspawn --help` and `nspawn COMMAND --help` print the same information. Errors
@@ -105,7 +105,7 @@ size, speed and time left; in a pipe or a log only the lines are written.
 
 | Option | Meaning |
 | --- | --- |
-| `REFERENCE` | `[registry/]repository[:tag|@digest]`, for example `fedora:44` or `docker.io/library/nginx`. |
+| `REFERENCE` | `[registry/]repository[:tag\|@digest]`, for example `fedora:44` or `docker.io/library/nginx`. |
 | `-n`, `--name NAME` | Local image name. Default: derived from the reference, for example `fedora-44`. |
 | `--backend auto\|overlay\|flat\|mstack` | How to assemble the image on this host. Default: `auto`, or the `backend` of the configuration file. App images are assembled as `overlay` even when `mstack` is chosen. |
 | `--mode auto\|boot\|app` | Whether the image boots an init system or runs a single program. Default: `auto`. |
@@ -267,6 +267,30 @@ Boots an image as a machine. Every option is remembered for the next start.
 | `--image-command` | Forget the remembered entrypoint and arguments and run the image's own again. |
 | `--no-wait` | Do not wait for a booted machine's init to be up before returning. Its registration is still awaited, so that ports and firewall rules can be applied. |
 | `-- ARGUMENTS...` | App images: replace the image's cmd; they follow its entrypoint, as with docker. |
+
+## run
+
+```text
+nspawn run REFERENCE [-n NAME] [--pull missing|always|never] [--backend BACKEND] [--mode MODE] [-f]
+           [--network bridge|veth|host] [-p HOST:CONTAINER[/udp]]... [--entrypoint PROGRAM]
+           [-e VAR[=VALUE]]... [-v SOURCE:TARGET[:ro]]... [-l KEY=VALUE]... [--restart POLICY]
+           [-m SIZE] [--cpus N] [--pids-limit N] [--no-wait] [-- ARGUMENTS...]
+```
+
+Makes a machine from an image and starts it, like `docker run -d`: `pull` (or
+`create` from a local image with the same reference) followed by `start`. It
+returns once the machine runs; `nspawn logs -f NAME` follows its output. The
+options of `start` are remembered as after `start`.
+
+| Option | Meaning |
+| --- | --- |
+| `REFERENCE` | `[registry/]repository[:tag\|@digest]`, for example `nginx:1.27`. |
+| `-n`, `--name NAME` | Name of the machine. Default: derived from the reference, for example `nginx-1.27`. A name that is taken is refused, with a pointer to `start`. |
+| `--pull missing\|always\|never` | When to ask the registry. `missing`, the default: a local image with the same reference is made into the machine, as `create` does, and the registry is asked only when there is none. `always`: every time, for the image the tag names now. `never`: a local image or nothing. |
+| `--backend auto\|overlay\|flat\|mstack` | How to assemble the machine, as for `pull`. |
+| `--mode auto\|boot\|app` | As for `pull`; a mode other than `auto` always pulls. |
+| `-f`, `--force` | Make the machine anew when one of that name exists; it must be stopped. |
+| the options of `start` | `--network`, `-p`, `--entrypoint`, `-e`, `-v`, `-l`, `--restart`, `-m`, `--cpus`, `--pids-limit`, `--no-wait` and the arguments after `--`, as for [start](#start). |
 
 ## stop
 
