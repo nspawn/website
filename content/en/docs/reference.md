@@ -100,7 +100,8 @@ nspawn pull REFERENCE [-n NAME] [--backend BACKEND] [--mode MODE] [-f]
 ```
 
 Downloads an image from the hub or another registry and makes it available to
-systemd-machined.
+systemd-machined. On a terminal a bar shows how far each blob got, with its
+size, speed and time left; in a pipe or a log only the lines are written.
 
 | Option | Meaning |
 | --- | --- |
@@ -168,7 +169,8 @@ nspawn push IMAGE [--to REFERENCE]
 Uploads a local image to the hub or another registry, with the credentials
 stored for it. `IMAGE` is a local image name, or the reference it was pulled
 from or built as. `--to` pushes it under a different reference than the one
-recorded for the image. The destination needs a tag, not a digest.
+recorded for the image. The destination needs a tag, not a digest. On a
+terminal a bar shows how far each blob got, as with `pull`.
 
 ## images
 
@@ -220,9 +222,9 @@ nspawn machines ls [-a] [--json]
 
 Lists the running machines, like `docker ps`: name, image, mode, command,
 state, uptime, leader PID, network and OS. A machine whose restart policy is
-bringing it back shows as `restarting` (or `starting` and `closing` while its
-unit comes up or goes down), even without `-a`. `-a`, `--all` also lists the nspawn
-machines that are not running. `--json` prints what the service returns for
+bringing it back shows as `restarting`, even without `-a`. `-a`, `--all` also
+lists the nspawn machines that are not running: `stopped`, or `starting` and
+`closing` while their unit comes up or goes down. `--json` prints what the service returns for
 each machine, its whole record included. `machines list` is an alias of
 `machines ls`.
 
@@ -293,8 +295,9 @@ nspawn exec MACHINE [-u USER] COMMAND...
 
 Runs a command inside a running machine of either kind, attached to the
 terminal, in the machine's namespaces, with the image's environment and the
-`-e` variables. The program is found on the machine's `PATH`. Exits with the
-command's status.
+`-e` variables. The program is found on the machine's `PATH` and runs with the
+machine's capabilities, like its own processes. Exits with the command's
+status.
 
 | Option | Meaning |
 | --- | --- |
@@ -416,7 +419,9 @@ until that machine is started with other volumes (or `-v none`) or removed.
 nspawn volume prune [-f]
 ```
 
-Removes every volume no machine uses, after asking on a terminal unless `-f`.
+Removes every volume no machine uses once a yes comes on standard input, as
+docker does: from a script, whose input ends without one, nothing is removed.
+`-f` removes them without asking.
 
 ## daemon
 
