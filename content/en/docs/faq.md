@@ -122,7 +122,8 @@ ports whoever starts the machine.
 
 ## How do I get a machine's address from the host?
 
-`sudo nspawn ps` and `sudo nspawn network ls` show it. Inside the machines, the other
+`sudo nspawn ps` shows it, and `sudo nspawn network inspect bridge` (or the
+name of another network) lists the machines of a network with their addresses. Inside the machines, the other
 machines are reachable by name and the host as `host.nspawn.internal`; on hosts
 with systemd 258 or newer, machined resolves the machine names on the host as
 well.

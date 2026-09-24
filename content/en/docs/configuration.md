@@ -33,6 +33,7 @@ back to a default.
 | `state_dir` | absolute path | `/var/lib/nspawn` | Blobs, layers, records, volumes and everything else nspawn keeps. |
 | `bridge` | string, 1 to 15 letters, digits, `-` or `_` | `nspawn0` | Name of the bridge the machines join. It must be free, or a bridge nspawn made. |
 | `subnet` | IPv4 CIDR, prefix 8 to 30 | `10.99.0.0/24` | Subnet of the bridge; its first address is the bridge's own. |
+| `network_pool` | IPv4 CIDR | `10.99.0.0/16` | Where `network create` takes the /24 of a network given no `--subnet`: the first one that overlaps no other network and nothing the host routes. |
 | `dns` | list of IPv4 addresses | the host's upstream servers | DNS servers handed to bridged machines. They must be reachable from the bridge: no loopback, no IPv6. |
 
 An example:
@@ -87,9 +88,11 @@ it is created or started; every one of them is remembered until it is changed:
 
 - `--backend` and `--mode` on `pull` and `build`; `--backend` on `create`.
 - `--name` on `pull` and `build`, to choose the local name.
-- `--network`, `-p`, `-e`, `-v`, `--label`, `--entrypoint` and the arguments
-  after `--` on `start` and `create`. `-p none`, `-e none`, `-v none`,
+- `--network` (`bridge`, `veth`, `host` or a network made with
+  `network create`), `-p`, `-e`, `-v`, `--label`, `--entrypoint` and the
+  arguments after `--` on `start`, `run` and `create`. `-p none`, `-e none`, `-v none`,
   `--label none` and `--image-command` forget what was remembered.
-- `--restart`, `-m`/`--memory`, `--cpus` and `--pids-limit` on `start` and
-  `create`, applied at the next start. `--restart no` and a limit of `0`
-  remove them.
+- `--restart`, `-m`/`--memory`, `--cpus` and `--pids-limit` on `start`, `run`
+  and `create`, applied at the next start, and on `update`, applied at once.
+  `--restart no` and a limit of `0` remove them.
+- `--rm` on `run`: the machine is removed when that run ends.

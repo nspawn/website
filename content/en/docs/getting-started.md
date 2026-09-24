@@ -161,10 +161,12 @@ sudo nspawn logs web -f
 sudo nspawn stop web
 ```
 
-`sudo nspawn run docker.io/library/nginx:latest --name web -p 8080:80` does the
-pull and the start in one step, like `docker run -d`. The port and any other
-flag given to `start` are remembered, so the next `sudo nspawn start web`
-publishes it again. `stop` sends the image's stop
+`sudo nspawn run -d docker.io/library/nginx:latest --name web -p 8080:80` does
+the pull and the start in one step, like `docker run -d`. Without `-d`, `run`
+stays attached as `docker run` does: `sudo nspawn run -it --rm
+docker.io/library/alpine:3 sh` gives you a shell in a machine that goes away
+when you leave it. The port and any other flag given to `start` or `run` are
+remembered, so the next `sudo nspawn start web` publishes it again. `stop` sends the image's stop
 signal (`SIGQUIT` for nginx) to the program and kills the machine after ten
 seconds if it is still there; `-t` changes the grace period.
 
@@ -176,10 +178,11 @@ keeps your credentials for that registry only; see
 
 - [Images and the hub](/docs/images/): references, search, credentials, backends,
   boot and app detection, `create`, where things are stored.
-- [Machines](/docs/machines/): `start`, `stop`, `exec`, `shell`, `logs`, `ps`,
-  entrypoints, environment and volumes.
-- [Networking](/docs/networking/): the bridge, published ports, veth and host
-  networking, firewalls.
+- [Machines](/docs/machines/): `start`, `run`, `stop`, `kill`, `exec`,
+  `shell`, `logs`, `ps`, `stats`, `events`, entrypoints, environment and
+  volumes.
+- [Networking](/docs/networking/): the bridge, networks of your own, published
+  ports, veth and host networking, firewalls.
 - [Building images](/docs/building/): `build` and `push`.
 - [Configuration](/docs/configuration/): `/etc/nspawn/nspawn.toml`, environment
   variables and flags.
