@@ -173,8 +173,8 @@ After assembling, nspawn looks at the root file system and at the OCI config:
   leaves it) and whose entrypoint is that init, or has no entrypoint at all, is
   a **boot** image. It is started with `Boot=yes`, as `machinectl start` would.
 - Everything else is an **app** image: the entrypoint and command from the
-  config run as PID 2 under nspawn's stub init (`Boot=no`, `ProcessTwo=yes`),
-  with the config's environment, working directory, user and stop signal.
+  config run under nspawn's stub init (`Boot=no`, `ProcessTwo=yes`), with the
+  config's environment, working directory, user and stop signal.
 
 `--mode boot` or `--mode app` overrides the detection. The mode is recorded with
 the image; [Machines](/docs/machines/) explains how it changes `start`, `exec`,
@@ -183,25 +183,28 @@ the image; [Machines](/docs/machines/) explains how it changes `start`, `exec`,
 ## More machines from one image
 
 ```shell
-sudo nspawn create SOURCE NAME [--backend BACKEND] [--network NETWORK] [-p HOST:CONTAINER[/udp]]...
+sudo nspawn create SOURCE NAME [--backend BACKEND] [--network NETWORK]... [-p [IP:]HOST:CONTAINER[/udp]]...
                    [--entrypoint PROGRAM] [-e VAR[=VALUE]]... [-v SOURCE:TARGET[:ro]]... [-l KEY=VALUE]...
-                   [--restart POLICY] [-m SIZE] [--cpus N] [--pids-limit N] [-f] [-- ARGUMENTS...]
+                   [--restart POLICY] [-m SIZE] [--cpus N] [--pids-limit N] [OPTIONS OF start] [-f] [-- ARGUMENTS...]
 ```
 
 `create` is `docker create`: another machine from an image that is already
 local, given by its name or by the reference it was pulled from, without
-touching the registry. It shares the source's layers and gets a writable layer,
-an address, settings and a record of its own, with `create` as its origin;
-`images rm` of one never affects the others.
+touching the registry. A reference that is not local is pulled first, under
+the image's own name, as `run` does. The machine shares the source's layers
+and gets a writable layer, an address, settings and a record of its own, with
+`create` as its origin; `images rm` of one never affects the others.
 
 The network kind is inherited from the source unless `--network` says
 otherwise; published ports are not, since two machines cannot publish the same
-one, and neither are the source's labels, restart policy, limits, variables or
-volumes: a new machine only gets what its own command line gives. `--entrypoint`, `-e` and the arguments after `--` apply to app images only
-and mean the same as on `start`; `-v` works for both kinds. Everything on the
-command line is checked before anything is made, so a refused `create` leaves
-nothing behind. `pull --name` ends up the same way, but resolves the manifest
-through the registry first.
+one, and neither are the source's labels, restart policy, limits, variables,
+volumes, healthcheck, secrets or the other flags: a new machine only gets what
+its own command line gives. Every option of `start` is accepted and means the
+same; `--entrypoint`, `-e` and the arguments after `--` apply to app images
+only, `-v` works for both kinds. Everything on the command line is checked
+before anything is made, so a refused `create` leaves nothing behind.
+`pull --name` ends up the same way, but resolves the manifest through the
+registry first.
 
 ## Listing and removing
 

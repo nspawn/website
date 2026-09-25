@@ -12,9 +12,10 @@ description: >-
   newer** (255, 259 and 261 are the ones the test suite runs against; 252 cannot
   mount the files nspawn generates under a machine's `/run`). cgroup v2 is
   required.
-- **overlayfs** for the `overlay` backend, which is the default on hosts older
-  than systemd 261 and what app images always use. Without it images are
-  extracted as flat directories.
+- **overlayfs** on **Linux 6.5 or newer** for the `overlay` backend, which is
+  the default on hosts older than systemd 261 and what app images always use
+  (the layers are mounted with `lowerdir+=`). Without it images are extracted
+  as flat directories.
 - **iproute2** and **nftables** (`ip` and `nft`) for the bridge network. Nothing
   else: the bridge does not need systemd-networkd or NetworkManager on the host.
   Only `--network veth` needs systemd-networkd.

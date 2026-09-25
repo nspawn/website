@@ -3,7 +3,7 @@ title: Command reference
 linkTitle: Reference
 weight: 8
 description: >-
-  Every command and option of nspawn 1.2.0.
+  Every command and option of nspawn 1.3.0.
 ---
 
 `nspawn --help` and `nspawn COMMAND --help` print the same information. Errors
@@ -13,8 +13,9 @@ are printed as `error: ...` on standard error and the exit status is 1;
 Every command but `daemon`, `completions` and the unit hooks is a call to the
 [service](/docs/overview/#the-service) on the system bus, which asks polkit
 whether the caller may take the action: the listings (`images ls`, `ps`,
-`machines ls`, `inspect`, `stats`, `events`, `network ls`, `network inspect`,
-`volume ls`) ask for `org.nspawn.inspect`; everything else, `search` and `hub` included, asks for
+`machines ls`, `inspect`, `top`, `stats`, `events`, `network ls`,
+`network inspect`, `volume ls`, `secret ls`, `secret inspect`) ask for
+`org.nspawn.inspect`; everything else, `search` and `hub` included, asks for
 `org.nspawn.manage`. Both are for administrators by default, and root is never
 asked.
 
@@ -114,26 +115,31 @@ size, speed and time left; in a pipe or a log only the lines are written.
 ## create
 
 ```text
-nspawn create SOURCE NAME [--backend BACKEND] [--network NETWORK] [-p HOST:CONTAINER[/udp]]...
-              [--entrypoint PROGRAM] [-e VAR[=VALUE]]... [-v SOURCE:TARGET[:ro]]... [-l KEY=VALUE]...
-              [--restart POLICY] [-m SIZE] [--cpus N] [--pids-limit N] [-f] [-- ARGUMENTS...]
+nspawn create SOURCE NAME [--backend BACKEND] [--network NETWORK]... [--network-alias [NETWORK=]NAME]...
+              [-p [IP:]HOST:CONTAINER[/udp]]... [--entrypoint PROGRAM] [-e VAR[=VALUE]]...
+              [-v SOURCE:TARGET[:ro]]... [-l KEY=VALUE]... [--restart POLICY] [-m SIZE] [--cpus N]
+              [--pids-limit N] [HEALTHCHECK OPTIONS] [OTHER OPTIONS] [--secret SECRET]...
+              [-f] [-- ARGUMENTS...]
 ```
 
 Makes another machine from a local image, like `docker create`, without
-touching the registry. The layers are shared with the source.
+touching the registry; a reference that is not local is pulled first, under
+the image's own name, as `run` does. The layers are shared with the source.
 
 | Option | Meaning |
 | --- | --- |
-| `SOURCE` | Local image to start from: its name, or the reference it was pulled from. |
+| `SOURCE` | Local image to start from: its name, or the reference it was pulled from. A reference that is not local is pulled. |
 | `NAME` | Name of the new machine. |
 | `--backend BACKEND` | How to assemble it. Default: like the source. |
-| `--network NETWORK` | Network of the new machine, as for [start](#start). Default: the source's kind; a network made with `network create` is not inherited, as ports and labels are not. |
-| `-p`, `--publish HOST:CONTAINER[/udp]` | Ports to publish on the host, like `start -p`. Not inherited from the source. |
+| `--network NETWORK` | Networks of the new machine, as for [start](#start). Default: the source's kind; a network made with `network create` is not inherited, as ports and labels are not. |
+| `--network-alias [NETWORK=]NAME` | Other names of the machine on its networks, as for [start](#start). |
+| `-p`, `--publish [IP:]HOST:CONTAINER[/udp]` | Ports to publish on the host, like `start -p`. Not inherited from the source. |
 | `--entrypoint PROGRAM` | Replace the image's entrypoint; an empty string runs the arguments alone. App images only. |
 | `-e`, `--env VAR[=VALUE]` | Environment for the program, `VAR=value` or `VAR` copied from the calling shell, like `docker -e`. App images only. |
 | `-v`, `--volume SOURCE:TARGET[:ro]` | Mount a host directory or a named volume, like `docker -v`. |
 | `-l`, `--label KEY=VALUE` | Label the machine, on top of the image's own labels, like `docker --label`. Not inherited from the source. |
 | `--restart`, `-m`, `--cpus`, `--pids-limit` | Restart policy and limits, as for [start](#start). Not inherited from the source. |
+| the healthcheck options, the other options, `--secret` | As for [start](#start). Not inherited from the source. |
 | `-f`, `--force` | Replace an existing machine with the same name. |
 | `-- ARGUMENTS...` | App images: replace the image's cmd; they follow its entrypoint, as with docker. |
 
@@ -236,34 +242,71 @@ nspawn inspect NAME...
 
 Prints everything nspawn knows about machines or images, running or not, as a
 JSON array with one object per name, like `docker inspect`: the record (image
-reference, digest, backend, mode, network, address, ports, volumes,
-environment, command, labels, restart policy, limits) and, for a running
-machine, its state, start time, leader PID and OS. The keys are those of the
+reference, digest, backend, mode, networks, addresses, aliases, ports, volumes,
+environment, command, labels, restart policy, limits, healthcheck, secrets and
+the other flags), for a running machine its state, start time, leader PID, OS
+and health, and for a stopped one the exit code of its last run. The keys are
+those of the
 [D-Bus interface](https://github.com/nspawn/nspawn/blob/master/docs/DBUS.md).
 
 ## start
 
 ```text
-nspawn start NAME [--network NETWORK] [-p HOST:CONTAINER[/udp]]...
-             [--entrypoint PROGRAM] [-e VAR[=VALUE]]... [-v SOURCE:TARGET[:ro]]...
-             [-l KEY=VALUE]... [--restart POLICY] [-m SIZE] [--cpus N] [--pids-limit N]
-             [--image-command] [--no-wait] [-- ARGUMENTS...]
+nspawn start NAME [--network NETWORK]... [--network-alias [NETWORK=]NAME]... [-p [IP:]HOST:CONTAINER[/udp]]...
+             [--entrypoint PROGRAM] [-e VAR[=VALUE]]... [-v SOURCE:TARGET[:ro]]... [-l KEY=VALUE]...
+             [--restart POLICY] [-m SIZE] [--cpus N] [--pids-limit N]
+             [--health-cmd COMMAND] [--health-interval D] [--health-timeout D] [--health-retries N]
+             [--health-start-period D] [--health-start-interval D] [--no-healthcheck]
+             [--hostname NAME] [-u USER] [-w DIR] [--cap-add CAP]... [--cap-drop CAP]... [--privileged]
+             [--read-only] [--tmpfs PATH[:OPTIONS]]... [--shm-size SIZE]
+             [--device HOST[:CONTAINER[:PERMISSIONS]]]... [--dns ADDRESS]... [--dns-search DOMAIN]...
+             [--add-host HOST:IP]... [--ulimit NAME=SOFT[:HARD]]... [--oom-score-adj N]
+             [--stop-signal SIGNAL] [--stop-timeout SECONDS] [--init] [--sysctl KEY=VALUE]...
+             [--secret NAME[:TARGET[:MODE[:UID:GID]]]]... [--image-command] [--no-wait] [-- ARGUMENTS...]
 ```
 
 Boots an image as a machine. Every option is remembered for the next start.
 
 | Option | Meaning |
 | --- | --- |
-| `--network NETWORK` | Network of the machine: `bridge`, the default network (the default); `veth`, a veth pair configured by systemd-networkd on the host (booted images only); `host`, the host's own network; or the name of a network made with [network create](#network-create). |
-| `-p`, `--publish HOST:CONTAINER[/udp]` | Publish a port on the host, like `docker -p`. Repeatable; `none` forgets them all. |
+| `--network NETWORK` | Network of the machine: `bridge`, the default network (the default); the name of a network made with [network create](#network-create); `veth`, a veth pair configured by systemd-networkd on the host (booted images only); `host`, the host's own network; or `none`, no interface but `lo`. Repeatable for several bridge networks, the first one primary: its address is where published ports lead and its gateway the default route, unless it is internal, in which case the first network that is not has the route. `veth` and `host` go alone. |
+| `--network-alias [NETWORK=]NAME` | Another name for the machine on its primary network, or on `NETWORK`, like `docker --network-alias`: every member of that network resolves it. Repeatable; `none` forgets them. |
+| `-p`, `--publish [IP:]HOST:CONTAINER[/udp]` | Publish a port on the host, like `docker -p`: on every address of the host, or on `IP` alone (`127.0.0.1:8080:80`). `8000-8010:8000-8010` publishes a range, one mapping per port. Repeatable; `none` forgets them all. |
 | `--entrypoint PROGRAM` | Replace the image's entrypoint; an empty string runs the arguments alone. App images only. |
 | `-e`, `--env VAR[=VALUE]` | Environment for the program, `VAR=value` or `VAR` copied from the calling shell. Repeatable; `none` forgets them. App images only. |
-| `-v`, `--volume SOURCE:TARGET[:ro]` | Mount a host directory or a named volume. Repeatable; `none` forgets them. |
+| `-v`, `--volume SOURCE:TARGET[:ro]` | Mount a host directory or a named volume, made on first use with what the image has at `TARGET`, as docker seeds one. Repeatable; `none` forgets them. |
 | `-l`, `--label KEY=VALUE` | Label the machine, on top of the image's own labels. Repeatable; `none` forgets them. |
 | `--restart no\|on-failure\|always\|unless-stopped` | Restart policy, like `docker --restart`. `always` and `unless-stopped` also start the machine at boot; `nspawn stop` takes an `unless-stopped` machine off the boot list until the next `start`. Applied at the next start; [update](#update) changes it at once. |
 | `-m`, `--memory SIZE` | Memory limit of the whole machine, like `docker -m`: `512m`, `2g` (at least `4m`), and as much swap again; `0` removes it. Applied at the next start; [update](#update) changes it at once. |
 | `--cpus N` | CPU limit of the whole machine, like `docker --cpus`: `0.5`, `2`; `0` removes it. Applied at the next start; [update](#update) changes it at once. |
 | `--pids-limit N` | Most processes and threads the machine may have (at least 16 for a booted machine); `0` removes the limit. Applied at the next start; [update](#update) changes it at once. |
+| `--health-cmd COMMAND` | Command that says whether the machine is healthy, run inside it through `/bin/sh -c` at every interval, like `docker --health-cmd`: exit 0 is healthy. Replaces the image's `HEALTHCHECK`. [update](#update) changes it at once. |
+| `--health-interval D` | Time between probes: `10s`, `1m30s`, `500ms`. Default: `30s`. |
+| `--health-timeout D` | Time a probe may take before it counts as failed. Default: `30s`. |
+| `--health-retries N` | Consecutive failed probes that make the machine unhealthy. Default: 3. |
+| `--health-start-period D` | Time after the start during which failed probes do not count. Default: `0s`. |
+| `--health-start-interval D` | Time between probes during the start period. Default: `5s`. |
+| `--no-healthcheck` | No probes, whatever the image says. |
+| `--hostname NAME` | Hostname inside the machine. Default: its name. A booted machine gets it as its `/etc/hostname`. |
+| `-u`, `--user USER` | User the program runs as, a name or a uid (listed in the image's `passwd` or not), instead of the image's; `uid:gid` is refused. nspawn resolves it from the image's `passwd` and `group` files through a stand-in for getent, as docker does. App images only. |
+| `-w`, `--workdir DIR` | Working directory of the program, instead of the image's. App images only. |
+| `--cap-add CAP` | Capability to keep on top of systemd-nspawn's default set: `NET_ADMIN`, `CAP_NET_ADMIN`, `ALL`. Repeatable; `none` forgets them. |
+| `--cap-drop CAP` | Capability to drop from the default set. `--cap-drop ALL --cap-add X` keeps `X`, as with docker. Repeatable; `none` forgets them. |
+| `--privileged` | Every capability, like `docker --privileged`; `--privileged=false` takes it back. |
+| `--read-only` | Mount the machine's root read-only; `--read-only=false` takes it back. |
+| `--tmpfs PATH[:OPTIONS]` | An empty tmpfs at a path inside (`/tmp:size=64m,mode=1777`). One that lands on `/run`, a tmpfs of every machine already, is left out with a note. Repeatable; `none` forgets them. |
+| `--shm-size SIZE` | Size of `/dev/shm`: `64m`, `1g`; `0` for the default. |
+| `--device HOST[:CONTAINER[:PERMISSIONS]]` | A device node of the host for the machine, like `docker --device` (`/dev/dri`, `/dev/ttyUSB0:/dev/ttyUSB0:rw`). Repeatable; `none` forgets them. |
+| `--dns ADDRESS` | DNS server for the machine, instead of the host's. Repeatable; `none` forgets them. |
+| `--dns-search DOMAIN` | DNS search domain. Repeatable; `none` forgets them. |
+| `--add-host HOST:IP` | A line for the machine's `/etc/hosts`; `host-gateway` is the host's address on the machine's network. Repeatable; `none` forgets them. |
+| `--ulimit NAME=SOFT[:HARD]` | A resource limit of the program, like `docker --ulimit` (`nofile=1024:4096`, `core=unlimited`). Repeatable; `none` forgets them. |
+| `--oom-score-adj N` | OOM score adjustment of the machine, -1000 to 1000. |
+| `--stop-signal SIGNAL` | Signal `stop` sends the program, instead of the image's (`SIGTERM`). |
+| `--stop-timeout SECONDS` | Seconds `stop` waits after the signal before SIGKILL, unless `-t` says otherwise. Default: 10. |
+| `--init` | Accepted for docker's sake: nspawn's stub init reaps orphans anyway. App images only. |
+| `--sysctl KEY=VALUE` | A `net.*` sysctl for an app machine's network namespace. Repeatable; `none` forgets them. |
+| `--secret NAME[:TARGET[:MODE[:UID:GID]]]` | A secret made with [secret create](#secret-create) as a read-only file inside the machine, like docker's `--secret`: `NAME` alone is `/run/secrets/NAME` with mode 0444, root's. Repeatable; `none` forgets them. Not on `mstack` machines. |
 | `--image-command` | Forget the remembered entrypoint and arguments and run the image's own again. |
 | `--no-wait` | Do not wait for a booted machine's init to be up before returning. Its registration is still awaited, so that ports and firewall rules can be applied. |
 | `-- ARGUMENTS...` | App images: replace the image's cmd; they follow its entrypoint, as with docker. |
@@ -272,9 +315,7 @@ Boots an image as a machine. Every option is remembered for the next start.
 
 ```text
 nspawn run [-d] [--rm] [-i] [-t] [-n NAME] [--pull missing|always|never]
-           [--backend BACKEND] [--mode MODE] [-f] [--network NETWORK] [-p HOST:CONTAINER[/udp]]...
-           [--entrypoint PROGRAM] [-e VAR[=VALUE]]... [-v SOURCE:TARGET[:ro]]... [-l KEY=VALUE]...
-           [--restart POLICY] [-m SIZE] [--cpus N] [--pids-limit N] [--no-wait]
+           [--backend BACKEND] [--mode MODE] [-f] [OPTIONS OF start] [--no-wait]
            REFERENCE [COMMAND [ARGUMENT...]]
 ```
 
@@ -305,26 +346,44 @@ image shows its console until it powers off, and Ctrl-C powers it off.
 | `--backend auto\|overlay\|flat\|mstack` | How to assemble the machine, as for `pull`. |
 | `--mode auto\|boot\|app` | As for `pull`; a mode other than `auto` always pulls. |
 | `-f`, `--force` | Make the machine anew when one of that name exists; it must be stopped. |
-| the options of `start` | `--network`, `-p`, `--entrypoint`, `-e`, `-v`, `-l`, `--restart`, `-m`, `--cpus`, `--pids-limit` and `--no-wait` (with `-d` only), as for [start](#start). Options may come before or after the reference, as long as they come before the command. |
+| the options of `start` | `--network`, `--network-alias`, `-p`, `--entrypoint`, `-e`, `-v`, `-l`, `--restart`, `-m`, `--cpus`, `--pids-limit`, the healthcheck options, the other options, `--secret` and `--no-wait` (with `-d` only), as for [start](#start). Options may come before or after the reference, as long as they come before the command. |
 
 ## stop
 
 ```text
-nspawn stop NAME [-f] [-t TIMEOUT] [--no-wait]
+nspawn stop NAME... [-f] [-t TIMEOUT] [--no-wait]
 ```
 
-Powers off a running machine: the image's stop signal to the program of an
-app, a poweroff request to a booted machine. Stopping a machine that already
-ended only cleans up after it. A machine with a restart policy stays stopped,
-and one that was waiting to be restarted is stopped too. An `unless-stopped`
-machine is also taken off the boot list until the next `start`; an `always`
-one stays enabled and starts again at the next boot (`rm` takes that away).
+Powers off running machines, one after the other: the machine's stop signal
+(`--stop-signal`, else the image's) to the program of an app, a poweroff
+request to a booted machine. Stopping a machine that already ended only cleans
+up after it, and a paused one is thawed first. A machine with a restart policy
+stays stopped, and one that was waiting to be restarted is stopped too. An
+`unless-stopped` machine is also taken off the boot list until the next
+`start`; an `always` one stays enabled and starts again at the next boot (`rm`
+takes that away). Every name is tried; one that could not be stopped is
+reported at the end.
 
 | Option | Meaning |
 | --- | --- |
 | `-f`, `--force` | Kill every process at once instead of asking the machine to stop. |
-| `-t`, `--timeout TIMEOUT` | App images: seconds to wait after the stop signal before killing the machine. Default: 10. |
+| `-t`, `--timeout TIMEOUT` | App images: seconds to wait after the stop signal before killing the machine. Default: the machine's `--stop-timeout`, else 10. |
 | `--no-wait` | Return right after the stop request, without waiting for the machine to be gone and without the kill after the timeout. |
+
+## restart
+
+```text
+nspawn restart NAME... [-t TIMEOUT]
+```
+
+Stops and starts machines, like `docker restart`: a [stop](#stop) followed by
+a [start](#start) with everything the machine remembers, and prints each name
+once it runs again. A machine that is not running is started. Every name is
+tried; one that could not be restarted is reported at the end.
+
+| Option | Meaning |
+| --- | --- |
+| `-t`, `--timeout TIMEOUT` | As for `stop`. |
 
 ## kill
 
@@ -344,32 +403,53 @@ good, as docker does.
 | --- | --- |
 | `-s`, `--signal SIGNAL` | A name (`KILL`, `SIGHUP`, `RTMIN+3`) or a number. Default: `KILL`. |
 
+## pause, unpause
+
+```text
+nspawn pause NAME...
+nspawn unpause NAME...
+```
+
+`pause` freezes every process of running machines through the cgroup freezer
+of their units, like `docker pause`, and `unpause` thaws them; each name is
+printed once done. `ps` and `inspect` show a frozen machine as `paused`, and
+`stop` and `kill` thaw it first.
+
 ## update
 
 ```text
 nspawn update NAME... [--restart POLICY] [-m SIZE] [--cpus N] [--pids-limit N]
+              [--health-cmd COMMAND] [--health-interval D] [--health-timeout D] [--health-retries N]
+              [--health-start-period D] [--health-start-interval D] [--no-healthcheck]
 ```
 
-Changes the restart policy and the limits of machines, like `docker update`,
-and prints each name once changed. A running machine gets the new limits at
-once and the policy for its next ending; a stopped one at its next start. The
-options are those of [start](#start); at least one is needed.
+Changes the restart policy, the limits and the healthcheck of machines, like
+`docker update`, and prints each name once changed. A running machine gets the
+new limits and healthcheck at once (its probes start afresh) and the policy for
+its next ending; a stopped one at its next start. The options are those of
+[start](#start); at least one is needed.
 
 ## exec
 
 ```text
-nspawn exec MACHINE [-u USER] COMMAND...
+nspawn exec MACHINE [-u USER] [-e VAR[=VALUE]]... [-w DIR] [-T] [-t] [-i] [-d] COMMAND...
 ```
 
 Runs a command inside a running machine of either kind, attached to the
 terminal, in the machine's namespaces, with the image's environment and the
-`-e` variables. The program is found on the machine's `PATH` and runs with the
-machine's capabilities, like its own processes. Exits with the command's
-status.
+machine's `-e` variables. The program is found on the machine's `PATH` and
+runs with the machine's capabilities, like its own processes. Exits with the
+command's status.
 
 | Option | Meaning |
 | --- | --- |
 | `-u`, `--user USER` | User inside the machine. Default: `root`. |
+| `-e`, `--env VAR[=VALUE]` | A variable for the command, `VAR=value` or `VAR` copied from the calling shell, like `docker exec -e`. Repeatable. |
+| `-w`, `--workdir DIR` | Working directory of the command, instead of the machine's. |
+| `-T`, `--no-tty` | No terminal, even from one: pipes, as in a script. |
+| `-t`, `--tty` | A terminal for the command, even without one here. |
+| `-i`, `--interactive` | Accepted for docker's sake: the command's input is always this one. |
+| `-d`, `--detach` | Leave the command running in the background and return at once. |
 | `COMMAND...` | Command and arguments. |
 
 ## shell
@@ -381,6 +461,16 @@ nspawn shell MACHINE [-u USER]
 Opens an interactive shell inside a running machine as `USER` (default
 `root`): machined's login session for booted machines, `/bin/sh` in the
 machine's namespaces for app machines.
+
+## top
+
+```text
+nspawn top MACHINE
+```
+
+Lists the processes of a running machine, like `docker top`: `PID` as the
+host sees it, `USER` as the machine sees it, `TIME` of CPU and `COMMAND`,
+read from the machine's cgroup and PID namespace.
 
 ## cp
 
@@ -409,16 +499,19 @@ machine; a stopped mstack machine has no tree on the host until it runs.
 ## logs
 
 ```text
-nspawn logs MACHINE [-f] [-n N] [--since WHEN] [-t] [--all] [--inside]
+nspawn logs MACHINE... [-f] [-n N] [--since WHEN] [--until WHEN] [-t] [--all] [--inside]
 ```
 
-Shows what a machine printed, like `docker logs`.
+Shows what machines printed, like `docker logs`. With several machines every
+line carries its machine's name (`web | ...`), the way docker compose shows
+them.
 
 | Option | Meaning |
 | --- | --- |
 | `-f`, `--follow` | Keep printing new output; starts from the last 10 lines unless `--lines` says otherwise. |
 | `-n`, `--lines N` | Only the last N lines. |
 | `--since WHEN` | Only output newer than this, in `journalctl --since` syntax, for example `"10 min ago"` or `-1h`. |
+| `--until WHEN` | Only output older than this, in `journalctl --until` syntax; nothing is followed then. |
 | `-t`, `--timestamps` | Prefix every line with its timestamp. |
 | `--all` | Also show what systemd says about the machine's service: start, stop, failures. |
 | `--inside` | Booted machines only: read the machine's own journal instead of its console output. |
@@ -446,18 +539,19 @@ machine. The table is drawn again every second on a terminal.
 nspawn events [--since WHEN] [--until WHEN] [-f KEY=VALUE]... [--json]
 ```
 
-Reports what happens to machines, networks and volumes, like `docker events`:
-for machines `start`, `die` (with its exit code), `stop`, `restart`, `oom` and
-`fail`, which systemd logs for every machine however it was started, and what
-nspawn does, `pull`, `build`, `create`, `push`, `kill`, `update` and `remove`;
-for networks and volumes `create` and `remove`. It reads the journal, so past
-events can be read back.
+Reports what happens to machines, networks, volumes and secrets, like
+`docker events`: for machines `start`, `die` (with its exit code), `stop`,
+`restart`, `oom` and `fail`, which systemd logs for every machine however it
+was started, `health_status` (with the new status) and what nspawn does,
+`pull`, `build`, `create`, `push`, `kill`, `update` and `remove`; for
+networks, volumes and secrets `create` and `remove`. It reads the journal, so
+past events can be read back.
 
 | Option | Meaning |
 | --- | --- |
 | `--since WHEN` | Events since this time, in `journalctl --since` syntax (`"2026-09-24 10:00"`, `-1h`, `today`). Without it, only new ones. |
 | `--until WHEN` | Stop at this time instead of waiting for new events; needs `--since`. |
-| `-f`, `--filter KEY=VALUE` | Only matching events: `name=NAME`, `type=machine\|network\|volume`, `event=ACTION`, `label=KEY` or `label=KEY=VALUE`. The same key given twice matches either value, different keys must all match. |
+| `-f`, `--filter KEY=VALUE` | Only matching events: `name=NAME`, `type=machine\|network\|volume\|secret`, `event=ACTION`, `label=KEY` or `label=KEY=VALUE`. The same key given twice matches either value, different keys must all match. |
 | `--json` | One JSON object per event: `time`, `time_usec`, `type`, `action`, `name`, `attributes`, `labels`. |
 
 ## network
@@ -488,7 +582,7 @@ prints them as the service returns them. `network list` is an alias.
 ### network create
 
 ```text
-nspawn network create NAME [--subnet CIDR] [--internal]
+nspawn network create NAME [--subnet CIDR] [--internal] [-l KEY=VALUE]...
 ```
 
 Makes a network of its own, like `docker network create`: a bridge `nsbr-NAME`
@@ -502,6 +596,7 @@ reachable from everywhere through the host, as from the LAN.
 | `NAME` | Letters, digits, `_` and `-`; not `bridge`, `host`, `veth`, `none` or `default`. |
 | `--subnet CIDR` | The network's IPv4 subnet. Default: the next free /24 of `network_pool` (see [Configuration](/docs/configuration/)), never one the host already routes. |
 | `--internal` | No way out: its machines reach each other and the host, nothing beyond, and cannot publish ports. |
+| `-l`, `--label KEY=VALUE` | Label the network, like `docker network create --label`. Repeatable. |
 
 ### network inspect
 
@@ -510,8 +605,9 @@ nspawn network inspect NAME...
 ```
 
 Prints networks as a JSON array, like `docker network inspect`: name,
-interface, subnet, gateway, whether it is internal, and its machines with their
-addresses, ports and whether they run. `bridge` is the default network.
+interface, subnet, gateway, whether it is internal, its labels, and its
+machines with their addresses, aliases, ports and whether they run. `bridge`
+is the default network.
 
 ### network rm
 
@@ -576,6 +672,58 @@ Removes every volume no machine uses once a yes comes on standard input, as
 docker does: from a script, whose input ends without one, nothing is removed.
 `-f` removes them without asking.
 
+## secret
+
+Secrets, like docker's without a swarm: kept encrypted on the host with
+`systemd-creds`, handed to machines as files by `--secret` on `start`, `run`
+and `create`.
+
+### secret ls
+
+```text
+nspawn secret ls [--json]
+```
+
+Lists the secrets: name, when it was made, the size of its plaintext, its
+labels and the machines that take it; never the content. `--json` prints the
+list as the service returns it. `secret list` is an alias.
+
+### secret create
+
+```text
+nspawn secret create NAME [--file FILE] [-l KEY=VALUE]...
+```
+
+Keeps a secret read from standard input, or from `--file`, encrypted for this
+host: bound to its TPM2 where there is one, to its credential key otherwise,
+under `/var/lib/nspawn/secrets`. A name that exists already is refused.
+
+| Option | Meaning |
+| --- | --- |
+| `NAME` | Letters, digits, `_`, `.` and `-`. |
+| `--file FILE` | Read the content from this file instead of standard input. |
+| `-l`, `--label KEY=VALUE` | Label the secret, like `docker secret create --label`. Repeatable. |
+
+### secret inspect
+
+```text
+nspawn secret inspect NAME...
+```
+
+Prints what nspawn keeps about secrets as a JSON array: name, creation time,
+size, labels and the machines that take them; never the content.
+
+### secret rm
+
+```text
+nspawn secret rm NAME...
+```
+
+Removes secrets no machine takes. One a machine's record names is refused,
+with the machines that take it, until they are started with other secrets (or
+`--secret none`) or removed. Every name is tried; one that cannot be removed is
+reported at the end. `secret remove` is an alias.
+
 ## daemon
 
 ```text
@@ -611,4 +759,6 @@ nspawn completions bash > ~/.local/share/bash-completion/completions/nspawn
 `nspawn network prepare NAME`, `nspawn network publish NAME` and
 `nspawn network release NAME` are what the drop-in of
 `systemd-nspawn@NAME.service` runs as `ExecStartPre`, `ExecStartPost` and
-`ExecStopPost`. They are not meant to be typed and are hidden from `--help`.
+`ExecStopPost`, and `nspawn health-run NAME` is what
+`nspawn-health-NAME.service` runs to probe a machine's healthcheck. They are
+not meant to be typed and are hidden from `--help`.

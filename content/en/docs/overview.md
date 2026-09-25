@@ -34,8 +34,11 @@ machines with a docker-like workflow:
 - The docker flags you know apply to any kind of machine: `-p` publishes
   ports, `-e` sets variables, `-v` mounts host directories or named volumes,
   `--entrypoint` and the arguments after `--` change what an app runs, `-l`
-  labels it, `--restart` gives it a restart policy, and `-m`, `--cpus` and
-  `--pids-limit` bound its resources.
+  labels it, `--restart` gives it a restart policy, `-m`, `--cpus` and
+  `--pids-limit` bound its resources, `--health-cmd` probes it, `--secret`
+  hands it a secret, and `--hostname`, `-u`, `--cap-drop`, `--read-only`,
+  `--tmpfs`, `--device`, `--dns`, `--add-host`, `--ulimit` and the rest of
+  `docker run`'s flags mean what they mean there.
 - `build` runs mkosi on a directory with a `mkosi.conf` and imports the result
   as a local image; `push` uploads an image to a registry, skipping the layers
   that are already there.
@@ -68,8 +71,8 @@ two actions:
 
 | Action | Methods |
 | --- | --- |
-| `org.nspawn.inspect` | The ones that only read: `images ls`, `ps` and `machines ls`, `inspect`, `stats`, `events`, `network ls` and `network inspect`, `volume ls`. |
-| `org.nspawn.manage` | Everything else: pulling, building, starting, stopping, removing, `exec`, `shell`, `cp`, `logs`, volumes, the registry commands and the credentials. |
+| `org.nspawn.inspect` | The ones that only read: `images ls`, `ps` and `machines ls`, `inspect`, `top`, `stats`, `events`, `network ls` and `network inspect`, `volume ls`, `secret ls` and `secret inspect`. |
+| `org.nspawn.manage` | Everything else: pulling, building, starting, stopping, restarting, pausing, removing, `exec`, `shell`, `cp`, `logs`, volumes, secrets, the registry commands and the credentials. |
 
 Both are for administrators by default, so `sudo nspawn ...` works as it always
 did, and a desktop session (or a terminal where you started `pkttyagent`) is
@@ -109,7 +112,7 @@ nspawn tells two kinds of images apart when it installs them:
 | Kind | What the image contains | How it runs |
 | --- | --- | --- |
 | **boot** | An init system (systemd) and no other entrypoint, like the hub images | Booted with `--boot`, as `machinectl start` does. `shell` opens machined's login session inside; `exec` enters the machine's namespaces and needs nothing from it. |
-| **app** | Anything else, for example an image from Docker Hub | Its entrypoint runs as PID 2 under nspawn's stub init, with the environment, working directory, user and stop signal from the OCI config. Its network namespace is prepared by nspawn before the program starts, so the network is there from the first instruction. `exec` and `shell` enter the namespaces. |
+| **app** | Anything else, for example an image from Docker Hub | Its entrypoint runs under nspawn's stub init, with the environment, working directory, user and stop signal from the OCI config. Its network namespace is prepared by nspawn before the program starts, so the network is there from the first instruction. `exec` and `shell` enter the namespaces. |
 
 The kind is detected at `pull` or `build` time and can be forced with
 `--mode boot` or `--mode app`. Both kinds join the bridge network, are listed
@@ -120,10 +123,12 @@ in [Machines](/docs/machines/).
 
 Every machine joins `nspawn0`, a docker0 style bridge that nspawn manages
 itself: fixed addresses, NAT, published ports (`-p 8080:80`) and a generated
-`/etc/hosts` with the names of the other machines. `--network host` shares the
-host's network instead, and `--network veth` gives booted machines the classic
-systemd-nspawn virtual ethernet pair configured by systemd-networkd. See
-[Networking](/docs/networking/).
+`/etc/hosts` with the names of the other machines. `network create` makes
+more networks like docker's user-defined ones, a machine may join several of
+them with names of its own on each, `--network host` shares the host's network
+instead, `--network none` gives a machine no network, and `--network veth`
+gives booted machines the classic systemd-nspawn virtual ethernet pair
+configured by systemd-networkd. See [Networking](/docs/networking/).
 
 ## The pieces
 
