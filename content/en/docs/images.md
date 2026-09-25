@@ -150,9 +150,9 @@ The backend decides how the layers become a directory systemd-nspawn can boot:
 | Backend | What it does | Needs |
 | --- | --- | --- |
 | `overlay` | Layers are extracted once under `/var/lib/nspawn` and shared. Each machine gets an overlayfs mount at `/var/lib/machines/NAME`, defined by a generated mount unit, with a private upper directory for its writes. | Any systemd with overlayfs. |
-| `mstack` | A native `systemd.mstack` directory at `/var/lib/machines/NAME.mstack` that points at the shared layers; the machine boots with managed user namespaces (`PrivateUsers=managed`) and the layers are shifted into the foreign UID range. | systemd 261 or newer with the `systemd-nsresourced` and `systemd-mountfsd` sockets available (nspawn starts them). |
+| `mstack` (experimental) | A native `systemd.mstack` directory at `/var/lib/machines/NAME.mstack` that points at the shared layers; the machine boots with managed user namespaces (`PrivateUsers=managed`) and the layers are shifted into the foreign UID range. Only when asked for by name, with a note that it is experimental: systemd-nsresourced and systemd-mountfsd are still settling, and what the host's systemd makes of a managed user namespace is its business (the 262 release cannot boot one at all until the fix for [systemd/systemd#43899](https://github.com/systemd/systemd/issues/43899) lands in a later version). | systemd 261 or newer with the `systemd-nsresourced` and `systemd-mountfsd` sockets available (nspawn starts them). |
 | `flat` | The layers are extracted into a plain directory at `/var/lib/machines/NAME`. Nothing is shared, maximum compatibility. | Nothing. |
-| `auto` (default) | `mstack` when the host supports it, otherwise `overlay` when overlayfs is available, otherwise `flat`. | |
+| `auto` (default) | `overlay` when overlayfs is available, otherwise `flat`. Never `mstack`. | |
 
 Pick one per image with `--backend` on `pull`, `build` or `create`, or set a
 default in the configuration file. `nspawn images ls` shows which backend each

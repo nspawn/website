@@ -559,19 +559,22 @@ twice matches either value, different keys must all match. `--json` prints one
 object per event.
 
 ```text
-2026-09-24T20:44:51.767425Z network create backend (subnet=10.99.1.0/24)
+2026-09-24T20:44:51.767425Z network create backend (interface=nsbr-backend, internal=false, subnet=10.99.1.0/24)
 2026-09-24T20:44:53.691583Z machine start db (image=docker.io/library/busybox:latest)
 2026-09-24T20:44:56.730139Z machine create busybox (from=api, reference=docker.io/library/busybox:latest)
 2026-09-24T20:44:57.105739Z machine start busybox
 2026-09-24T20:44:57.125181Z machine die busybox (code=exited, exit_code=3)
 2026-09-24T20:44:57.154522Z machine fail busybox (result=exit-code)
-2026-09-24T20:44:57.381848Z machine remove busybox
+2026-09-24T20:44:57.381848Z machine remove busybox (image=docker.io/library/busybox:latest)
 2026-09-24T20:44:57.645267Z machine kill api (image=docker.io/library/busybox:latest, signal=1)
 2026-09-25T10:20:16.502186Z machine health_status web (image=docker.io/library/busybox:latest, status=healthy)
 ```
 
 Times are in UTC. A machine's `die` carries the exit code systemd-nspawn gave:
-255 for an app whose program died of a signal, as `stop` makes it.
+255 for an app whose program died of a signal, as `stop` makes it. Every event
+of a kind carries the same metadata whatever the action, so a `remove` says as
+much as a `create`: `image=` on a machine's, `subnet=`, `interface=` and
+`internal=` on a network's, `path=` on a volume's, `size=` on a secret's.
 
 ## stop
 
