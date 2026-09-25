@@ -2,9 +2,10 @@
 title: Machines
 weight: 4
 description: >-
-  Starting and stopping machines, entrypoints, environment, volumes and labels,
-  restart policies and resource limits, running commands inside, copying files,
-  reading their output, removing machines, and how boot and app images differ.
+  Starting and stopping machines, run like docker run, entrypoints,
+  environment, volumes and labels, restart policies and resource limits,
+  running commands inside, copying files, output, usage and events, removing
+  machines, and how boot and app images differ.
 ---
 
 Every one of these commands is a call to the
@@ -26,12 +27,14 @@ releases everything however the machine ended. So `machinectl start NAME`,
 program that exits on its own or a crash all behave like `nspawn start` and
 `nspawn stop`. The drop-in names the nspawn binary that wrote it, which is why
 nspawn belongs in `/usr/local/bin` or `/usr/bin`. It also carries the machine's
-restart policy and resource limits, when it has them.
+restart policy and resource limits, when it has them, and for an app machine
+the `ExecStart=` that runs systemd-nspawn through `nspawn attach-exec`, which
+is how `run -i` and `run -t` hand the program an input or a terminal.
 
 ## start
 
 ```shell
-sudo nspawn start NAME [--network bridge|veth|host] [-p HOST:CONTAINER[/udp]]...
+sudo nspawn start NAME [--network NETWORK] [-p HOST:CONTAINER[/udp]]...
                   [--entrypoint PROGRAM] [-e VAR[=VALUE]]... [-v SOURCE:TARGET[:ro]]...
                   [-l KEY=VALUE]... [--restart POLICY] [-m SIZE] [--cpus N] [--pids-limit N]
                   [--image-command] [--no-wait] [-- ARGUMENTS...]
@@ -49,8 +52,9 @@ Everything given to `start` is remembered for the machine, so a plain
 `nspawn start NAME` next time reuses the network, the ports, the command, the
 variables and the volumes of the last run:
 
-- `--network` switches the machine between the bridge, a veth pair and the
-  host's network; see [Networking](/docs/networking/).
+- `--network` switches the machine between the bridge, a network of its own
+  made with `network create`, a veth pair and the host's network; see
+  [Networking](/docs/networking/).
 - `-p HOST:CONTAINER[/udp]` publishes a port on the host, like docker. It needs
   the bridge network; `-p none` forgets all published ports.
 - `--entrypoint`, `-e` and the arguments after `--` change what an **app**
@@ -68,6 +72,43 @@ Images that were not installed by nspawn, for example something created with
 `machinectl import-tar`, can be started too: they get the stock template's veth
 networking, and nspawn makes sure systemd-networkd runs on the host so that the
 machine actually gets an address, but none of the flags above apply to them.
+
+## run
+
+```shell
+sudo nspawn run [-d] [--rm] [-i] [-t] [OPTIONS] REFERENCE [COMMAND [ARGUMENT...]]
+```
+
+`run` makes a machine from an image and starts it, like `docker run`: `pull`,
+or `create` from a local image with the same reference, then `start`, with the
+options of both. What follows the image replaces an app's command, as with
+docker. Without `-d` it stays with the machine:
+
+- The machine's output follows until it ends, stdout and stderr together, a
+  line at a time. It is read from the journal, so `nspawn logs NAME` shows it
+  later, and the machine goes on should `run` be interrupted.
+- `run` exits with the program's exit code, or 128 plus the signal it died of:
+  130 after Ctrl-C, 137 after `kill`. Ctrl-C, SIGTERM, SIGHUP and SIGQUIT go to
+  the program; a third Ctrl-C within a second leaves the machine running and
+  returns.
+- `-i` gives the program this standard input, `-t` a terminal; closing that
+  terminal stops the machine, since nothing would read it any more.
+- `--rm` removes the machine once it ends, and leaves nothing behind when the
+  start fails. Named volumes stay, and so does an image the run had to pull,
+  under the image's local name, as docker keeps images; without `--name` the
+  machine gets a name of its own.
+
+```shell
+sudo nspawn run --rm docker.io/library/busybox:latest sh -c 'echo hi; exit 3'; echo $?
+echo abc | sudo nspawn run -i --rm docker.io/library/busybox:latest wc -c
+sudo nspawn run -it --rm docker.io/library/alpine:3 sh
+sudo nspawn run -d --name web -p 8080:80 docker.io/library/nginx:latest
+```
+
+A booted image shows its console until it powers off (Ctrl-C powers it off).
+`run -it` on one waits for its boot, opens a root shell and powers the machine
+off when the shell ends, with the shell's exit code: `sudo nspawn run -it --rm
+fedora:44` is a throwaway Fedora with its own systemd.
 
 ## Boot machines
 
@@ -214,7 +255,15 @@ unit, which is why nothing inside shows them. As with docker, `--memory` also
 lets the machine use as much swap again (MemorySwapMax=), and no more. `0`
 removes a limit.
 
-Both are remembered like the ports and apply at the next start. With a policy,
+Both are remembered like the ports and apply at the next start, and
+`nspawn update` changes them without one, like `docker update`: a running
+machine gets the new limits in its cgroup at once.
+
+```shell
+sudo nspawn update web -m 1g --cpus 2 --restart always
+```
+
+With a policy,
 `stop --no-wait` of an app also lets systemd-nspawn's stub init send the
 program SIGTERM and SIGHUP, since nobody stays behind to stop the unit later.
 
@@ -311,6 +360,56 @@ earlier ones included:
 
 `logs` works for stopped machines too, since the journal keeps what they wrote.
 
+## stats
+
+```shell
+sudo nspawn stats [NAME...] [--no-stream] [--json]
+```
+
+`stats` shows what each running machine uses, like `docker stats`, drawn again
+every second: CPU (100% is one CPU busy), memory in use against the limit (the
+host's memory without one), network and disk traffic, and processes. The
+numbers are those of the cgroup of the machine's unit, which holds the whole
+machine, and of its interfaces as the machine sees them. `--no-stream` prints
+one table, `--json` one object per machine and reading.
+
+```text
+ NAME  CPU %  MEM USAGE / LIMIT  MEM %  NET I/O      BLOCK I/O      PIDS
+ api   0.00%  2.4 MiB / 3.8 GiB  0.06%  372 B / 0 B  0 B / 4.0 KiB  3
+ db    0.00%  2.4 MiB / 3.8 GiB  0.06%  892 B / 0 B  0 B / 4.0 KiB  3
+ web   0.00%  2.4 MiB / 3.8 GiB  0.06%  522 B / 0 B  0 B / 4.0 KiB  3
+```
+
+## events
+
+```shell
+sudo nspawn events [--since WHEN] [--until WHEN] [-f KEY=VALUE]... [--json]
+```
+
+`events` reports what happens, like `docker events`: machines that start, die
+(with their exit code), stop, are restarted, run out of memory or fail, and
+what nspawn does: pulls, builds, creations, pushes, kills, updates and
+removals, of networks and volumes too. It reads the journal, where systemd
+logs every start and end of a machine's unit however it was started, and
+nspawn logs what it does, so `--since` reads past events back. Filters take
+`name=`, `type=` (`machine`, `network`, `volume`), `event=` and `label=KEY` or
+`label=KEY=VALUE`: the same key given twice matches either value, different
+keys must all match. `--json` prints one object per event.
+
+```text
+2026-09-24T20:44:51.767425Z network create backend (subnet=10.99.1.0/24)
+2026-09-24T20:44:53.691583Z machine start db (image=docker.io/library/busybox:latest)
+2026-09-24T20:44:56.730139Z machine create busybox (from=api, reference=docker.io/library/busybox:latest)
+2026-09-24T20:44:57.105739Z machine start busybox
+2026-09-24T20:44:57.125181Z machine die busybox (code=exited, exit_code=3)
+2026-09-24T20:44:57.154522Z machine fail busybox (result=exit-code)
+2026-09-24T20:44:57.381848Z machine remove busybox
+2026-09-24T20:44:57.645267Z machine kill api (image=docker.io/library/busybox:latest, signal=1)
+```
+
+Times are in UTC. A machine's `die` carries the exit code systemd-nspawn gave:
+255 for an app whose program died of a signal, as `stop` makes it.
+
 ## stop
 
 ```shell
@@ -329,6 +428,20 @@ error.
 With a restart policy the machine stays stopped for now: an `unless-stopped`
 machine is also taken off the boot list until the next `start`, while an
 `always` one still starts at the next boot.
+
+## kill
+
+```shell
+sudo nspawn kill web                 # SIGKILL: stopped for good
+sudo nspawn kill -s HUP web          # a signal for the program
+```
+
+`kill` sends a signal to machines, like `docker kill`. SIGKILL, the default,
+stops the machine for good, as `stop --force` does. Any other signal goes to
+the program of an app, or to the init of a booted machine, and the machine
+lives on unless it ends of it; then its restart policy applies, except when the
+signal was the machine's own stop signal, which counts as a stop, as with
+docker.
 
 ## rm
 

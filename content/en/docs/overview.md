@@ -55,9 +55,10 @@ read.
 
 Every command is a method call on `org.nspawn.Manager`: images, machines, the
 network and credentials are methods, the long operations (pull, push, build,
-create, rm, images rm, cp, volume rm and volume prune) come back as job objects
-that report their output and result, and `exec` hands the command's terminal
-over the bus. Scripts that would rather not speak
+create, rm, images rm, cp, volume rm and prune, network rm and prune) come back
+as job objects that report their output and result, and `exec`, `logs`,
+`events` and an attached `run` hand their streams or terminal over the bus,
+with a process object that says how they ended. Scripts that would rather not speak
 D-Bus get the same dictionaries as JSON from `inspect` and `--json` on the
 listings.
 
@@ -67,7 +68,7 @@ two actions:
 
 | Action | Methods |
 | --- | --- |
-| `org.nspawn.inspect` | The ones that only read: `images ls`, `ps` and `machines ls`, `inspect`, `network ls`, `volume ls`. |
+| `org.nspawn.inspect` | The ones that only read: `images ls`, `ps` and `machines ls`, `inspect`, `stats`, `events`, `network ls` and `network inspect`, `volume ls`. |
 | `org.nspawn.manage` | Everything else: pulling, building, starting, stopping, removing, `exec`, `shell`, `cp`, `logs`, volumes, the registry commands and the credentials. |
 
 Both are for administrators by default, so `sudo nspawn ...` works as it always

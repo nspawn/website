@@ -2,8 +2,9 @@
 title: Networking
 weight: 5
 description: >-
-  The nspawn0 bridge, published ports, DNS and machine names, how apps get
-  their network, firewalls, and the veth and host alternatives.
+  The nspawn0 bridge, networks of your own, published ports, DNS and machine
+  names, how apps get their network, firewalls, and the veth and host
+  alternatives.
 ---
 
 Every machine records which network it uses. `start --network` changes it, and
@@ -12,6 +13,7 @@ the choice sticks for the next start.
 | Network | Default for | What the machine gets |
 | --- | --- | --- |
 | `bridge` | Every image nspawn installs | A fixed address on the `nspawn0` bridge, NAT to the outside, published ports, the names of the other machines and of the host. Needs nothing from the host's own network manager. |
+| a network's name | | The same on a bridge of its own, made with `network create`: see [Networks of your own](#networks-of-your-own). |
 | `host` | | The host's network namespace, like `docker run --network host`: the machine sees the host's interfaces and binds to the host's ports. Works for both kinds of image. |
 | `veth` | Images not installed by nspawn | The classic systemd-nspawn setup: a virtual ethernet pair whose host end is configured by systemd-networkd through the stock `80-container-ve.network`. Booted images only. |
 
@@ -49,15 +51,73 @@ bridge get an IPv6 link-local address, and a machine's name leads to its bridge
 address: `ping web` from the host answers from `10.99.0.x`.
 
 ```shell
+sudo nspawn network inspect bridge
+```
+
+```text
+[
+  {
+    "created": 0,
+    "gateway": "10.99.0.1",
+    "interface": "nspawn0",
+    "internal": false,
+    "machines": [
+      {
+        "address": "10.99.0.2",
+        "name": "web",
+        "ports": [
+          "8081->80/tcp"
+        ],
+        "running": true
+      }
+    ],
+    "name": "bridge",
+    "subnet": "10.99.0.0/24"
+  }
+]
+```
+
+## Networks of your own
+
+Like docker's user-defined networks, `network create` makes a bridge of its own
+for a group of machines:
+
+```shell
+sudo nspawn network create backend
+sudo nspawn run -d --name db --network backend docker.io/library/postgres:17
+sudo nspawn run -d --name api --network backend -p 8080:80 docker.io/library/nginx:latest
+```
+
+```text
+backend is up: nsbr-backend on 10.99.1.0/24
+```
+
+The bridge is `nsbr-NAME` (a hash of the name when it is too long for an
+interface name), and its subnet the next /24 of `network_pool` (`10.99.0.0/16`
+unless set in [the configuration file](/docs/configuration/)) that overlaps no
+other network and nothing the host routes already; `--subnet` chooses one.
+Machines of one network reach each other by name, through the same generated
+`/etc/hosts`, and `host.nspawn.internal` is that network's gateway. Nothing
+of another network reaches them, the default one included: the forward chain
+of the `ip nspawn` table drops what crosses from one bridge to another, and a
+drop there holds whatever firewalld or iptables allow. Ports a machine
+publishes are the exception, reachable from every network through the host,
+as from the LAN. `--internal` makes a network with no way out: its machines
+reach each other and the host, nothing beyond, and cannot publish ports.
+
+A machine joins one network. `network ls` lists them with the machines whose
+records name them, `network inspect NAME` shows one with its machines, their
+addresses and ports, and `network rm` and `network prune` remove the ones no
+machine uses, bridge, rules and firewall exceptions included:
+
+```shell
 sudo nspawn network ls
 ```
 
 ```text
-nspawn0 10.99.0.0/24 (gateway 10.99.0.1, host name host.nspawn.internal)
- MACHINE    ADDRESS    PORTS          STATE
- fedora-44  10.99.0.2  -              running
- web        10.99.0.3  8080->80/tcp   running
- db         10.99.0.4  -              stopped
+ NETWORK  INTERFACE     SUBNET        INTERNAL  MACHINES
+ bridge   nspawn0       10.99.0.0/24  no        web
+ backend  nsbr-backend  10.99.1.0/24  no        api db
 ```
 
 ## Published ports
