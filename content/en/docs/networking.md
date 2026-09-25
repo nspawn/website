@@ -7,14 +7,15 @@ description: >-
   alternatives.
 ---
 
-Every machine records which network it uses. `start --network` changes it, and
-the choice sticks for the next start.
+Every machine records which networks it uses. `start --network` changes them,
+and the choice sticks for the next start.
 
 | Network | Default for | What the machine gets |
 | --- | --- | --- |
 | `bridge` | Every image nspawn installs | A fixed address on the `nspawn0` bridge, NAT to the outside, published ports, the names of the other machines and of the host. Needs nothing from the host's own network manager. |
-| a network's name | | The same on a bridge of its own, made with `network create`: see [Networks of your own](#networks-of-your-own). |
+| a network's name | | The same on a bridge of its own, made with `network create`; several at once, with `--network` repeated: see [Networks of your own](#networks-of-your-own). |
 | `host` | | The host's network namespace, like `docker run --network host`: the machine sees the host's interfaces and binds to the host's ports. Works for both kinds of image. |
+| `none` | | No network at all, like `docker run --network none`: `lo` and nothing else. Works for both kinds of image. |
 | `veth` | Images not installed by nspawn | The classic systemd-nspawn setup: a virtual ethernet pair whose host end is configured by systemd-networkd through the stock `80-container-ve.network`. Booted images only. |
 
 ## The bridge
@@ -34,45 +35,55 @@ Each machine gets a fixed address from the subnet, remembered with its record.
 A **booted** machine receives it through a `.network` file that nspawn
 generates and bind-mounts at `/run/systemd/network/10-host0.network`, for the
 systemd-networkd inside to apply, together with the DNS servers: the host's
-upstream resolvers by default, `dns` from the configuration if set, and public
-resolvers as a last resort, with a warning, when none can be determined.
+upstream resolvers by default, `dns` from the configuration if set, `--dns`
+and `--dns-search` of the machine over both, and public resolvers as a last
+resort, with a warning, when none can be determined.
 
 An **app** machine has nothing inside to configure an interface, so nspawn
 builds its network namespace before the program starts: `ip netns`, a veth pair
 on the bridge, the address and the default route, handed to systemd-nspawn with
 `NamespacePath=`, plus a generated `/etc/resolv.conf`. The namespace lives at
-`/run/netns/nspawn-NAME` while the machine runs and goes away with it.
+`/run/netns/nspawn-NAME` while the machine runs and goes away with it, and
+`--sysctl` sets `net.*` keys in it.
 
 A generated `/etc/hosts`, mounted into every bridged machine, resolves the names
-of the other machines on the bridge and `host.nspawn.internal` for the host.
-On hosts with systemd 258 or newer, machined also lets the host resolve machine
-names by itself. The bridge carries IPv4 only, so neither the machines nor the
-bridge get an IPv6 link-local address, and a machine's name leads to its bridge
-address: `ping web` from the host answers from `10.99.0.x`.
+of the other machines on the bridge and `host.nspawn.internal` for the host;
+`--add-host HOST:IP` adds lines of your own, `host-gateway` standing for the
+host's address on the machine's network. On hosts with systemd 258 or newer,
+machined also lets the host resolve machine names by itself. The bridge
+carries IPv4 only, so neither the machines nor the bridge get an IPv6
+link-local address, and a machine's name leads to its bridge address:
+`ping web` from the host answers from `10.99.0.x`.
 
 ```shell
-sudo nspawn network inspect bridge
+sudo nspawn network inspect front
 ```
 
 ```text
 [
   {
-    "created": 0,
-    "gateway": "10.99.0.1",
-    "interface": "nspawn0",
+    "created": 1790331611,
+    "gateway": "10.99.1.1",
+    "interface": "nsbr-front",
     "internal": false,
+    "labels": {
+      "tier": "edge"
+    },
     "machines": [
       {
-        "address": "10.99.0.2",
+        "address": "10.99.1.2",
+        "aliases": [
+          "www"
+        ],
         "name": "web",
         "ports": [
-          "8081->80/tcp"
+          "127.0.0.1:8080->80/tcp"
         ],
         "running": true
       }
     ],
-    "name": "bridge",
-    "subnet": "10.99.0.0/24"
+    "name": "front",
+    "subnet": "10.99.1.0/24"
   }
 ]
 ```
@@ -83,13 +94,15 @@ Like docker's user-defined networks, `network create` makes a bridge of its own
 for a group of machines:
 
 ```shell
-sudo nspawn network create backend
-sudo nspawn run -d --name db --network backend docker.io/library/postgres:17
-sudo nspawn run -d --name api --network backend -p 8080:80 docker.io/library/nginx:latest
+sudo nspawn network create back --internal
+sudo nspawn network create front --label tier=edge
+sudo nspawn run -d --name db --network back --network-alias postgres docker.io/library/postgres:17
+sudo nspawn run -d --name web --network front --network back --network-alias front=www -p 127.0.0.1:8080:80 docker.io/library/nginx:latest
 ```
 
 ```text
-backend is up: nsbr-backend on 10.99.1.0/24
+back is up: nsbr-back on 10.99.2.0/24
+front is up: nsbr-front on 10.99.1.0/24
 ```
 
 The bridge is `nsbr-NAME` (a hash of the name when it is too long for an
@@ -105,36 +118,75 @@ publishes are the exception, reachable from every network through the host,
 as from the LAN. `--internal` makes a network with no way out: its machines
 reach each other and the host, nothing beyond, and cannot publish ports.
 
-A machine joins one network. `network ls` lists them with the machines whose
-records name them, `network inspect NAME` shows one with its machines, their
-addresses and ports, and `network rm` and `network prune` remove the ones no
-machine uses, bridge, rules and firewall exceptions included:
+A machine may join several networks: `--network front --network back` puts it
+on both, with an address on each, the first one primary. The primary network
+is where its published ports lead and, unless it is internal, where its default
+route goes; an internal primary leaves the route to the first network that is
+not. A booted machine gets one interface per network (`host0`, `host1`, ...),
+each configured by the systemd-networkd inside through a `.network` file of
+its own; an app machine gets them in the namespace nspawn prepares. Its
+`/etc/hosts` lists, for every network it is on, the members of that network
+with their addresses there, so a proxy on `front` and `back` reaches both
+sides while `front` and `back` still do not reach each other. `veth` and
+`host` go alone.
+
+`--network-alias NAME` gives a machine another name on its primary network,
+`--network-alias NETWORK=NAME` on that network, as `docker run
+--network-alias` does: every member of the network resolves the alias as well,
+which is how `db` can stand for `postgres-17` today and for another machine
+tomorrow. An alias several machines share leads to the first of them by name.
+`--network-alias none` forgets them.
+
+`network ls` lists the networks with the machines whose records name them,
+`network inspect NAME` shows one with its machines, their addresses, aliases
+and ports, and `network rm` and `network prune` remove the ones no machine
+uses, bridge, rules and firewall exceptions included. `network create --label
+KEY=VALUE` tags a network for whoever reads `network inspect`, as docker's
+does:
 
 ```shell
 sudo nspawn network ls
 ```
 
 ```text
- NETWORK  INTERFACE     SUBNET        INTERNAL  MACHINES
- bridge   nspawn0       10.99.0.0/24  no        web
- backend  nsbr-backend  10.99.1.0/24  no        api db
+ NETWORK  INTERFACE   SUBNET        INTERNAL  MACHINES
+ bridge   nspawn0     10.99.0.0/24  no        bb
+ back     nsbr-back   10.99.2.0/24  yes       api db web
+ front    nsbr-front  10.99.1.0/24  no        web
+```
+
+The `/etc/hosts` of `web`, on `front` and `back` with `www` as its alias on
+`front`, lists the members of both networks with their addresses there:
+
+```text
+# Generated by nspawn; do not edit.
+127.0.0.1 localhost
+::1 localhost ip6-localhost ip6-loopback
+10.99.1.2 web www
+10.99.2.3 web
+10.99.1.1 host.nspawn.internal
+10.99.2.4 api
+10.99.2.2 db postgres
 ```
 
 ## Published ports
 
 ```shell
-sudo nspawn start web -p 8080:80 -p 5353:53/udp
+sudo nspawn start web -p 8080:80 -p 5353:53/udp -p 127.0.0.1:9090:9090 -p 8000-8010:8000-8010
 ```
 
-Each `-p HOST:CONTAINER[/udp]` becomes a DNAT entry in the `ip nspawn` table.
-The port is reachable from other hosts, from the host's own addresses and from
-`127.0.0.1` (through `route_localnet`, as docker does without its userland
-proxy); binding to a single host address is not supported. The entries are
-installed once the machine is registered and removed when it ends, by the unit
-hooks, so they also go away after a crash or when the program exits on its
-own. A port another running machine publishes, or one a service of the host
-already listens on, is refused before the machine starts, and a refused port
-is not remembered.
+Each `-p [IP:]HOST:CONTAINER[/udp]` becomes a DNAT entry in the `ip nspawn`
+table. Without an address the port is reachable from other hosts, from the
+host's own addresses and from `127.0.0.1` (through `route_localnet`, as docker
+does without its userland proxy); with one, `127.0.0.1:9090:9090` say, on that
+address of the host alone, for a reverse proxy in front. A range,
+`8000-8010:8000-8010`, is one mapping per port, which `inspect` shows one by
+one. The entries are installed once the machine is registered and removed when
+it ends, by the unit hooks, so they also go away after a crash or when the
+program exits on its own. A port another running machine publishes, on every
+address or on that one, or one a service of the host already listens on, is
+refused before the machine starts, and a refused port is not remembered. On a
+machine with several networks the port leads to its primary address.
 
 The list is remembered for the machine: `nspawn start web` next time publishes
 the same ports, and `-p none` forgets them all. Ports need the bridge network;
@@ -181,3 +233,9 @@ requests.
 network namespace, sees the host's interfaces and binds to the host's ports.
 Published ports do not apply, and an app that runs this way keeps its user
 namespace.
+
+## none
+
+`--network none` sets `Private=yes`: the machine has `lo` and nothing else,
+like `docker run --network none`. Published ports do not apply, and an app that
+runs this way keeps its user namespace too.
