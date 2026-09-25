@@ -3,7 +3,7 @@ title: Command reference
 linkTitle: Reference
 weight: 8
 description: >-
-  Every command and option of nspawn 1.3.0.
+  Every command and option of nspawn 1.3.1.
 ---
 
 `nspawn --help` and `nspawn COMMAND --help` print the same information. Errors
@@ -108,7 +108,7 @@ size, speed and time left; in a pipe or a log only the lines are written.
 | --- | --- |
 | `REFERENCE` | `[registry/]repository[:tag\|@digest]`, for example `fedora:44` or `docker.io/library/nginx`. |
 | `-n`, `--name NAME` | Local image name. Default: derived from the reference, for example `fedora-44`. |
-| `--backend auto\|overlay\|flat\|mstack` | How to assemble the image on this host. Default: `auto`, or the `backend` of the configuration file. App images are assembled as `overlay` even when `mstack` is chosen. |
+| `--backend auto\|overlay\|flat\|mstack` | How to assemble the image on this host. Default: `auto`, or the `backend` of the configuration file: `overlay`, or `flat` without overlayfs. `mstack` (systemd 261 or newer, managed user namespaces) is experimental. App images are assembled as `overlay` even when `mstack` is chosen. |
 | `--mode auto\|boot\|app` | Whether the image boots an init system or runs a single program. Default: `auto`. |
 | `-f`, `--force` | Replace an existing image with the same name. |
 

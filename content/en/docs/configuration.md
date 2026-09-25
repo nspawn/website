@@ -28,7 +28,7 @@ back to a default.
 | --- | --- | --- | --- |
 | `registry` | string | `hub.nspawn.org` | Registry for references without a host part. |
 | `ca_cert` | path | none | Extra CA certificate (PEM) to trust when talking to the hub. |
-| `backend` | `auto`, `overlay`, `flat` or `mstack` | `auto` | Backend for `pull` and `build` when they are not given `--backend`. |
+| `backend` | `auto`, `overlay`, `flat` or `mstack` | `auto` | Backend for `pull` and `build` when they are not given `--backend`: `auto` is `overlay`, or `flat` without overlayfs; `mstack` is experimental. |
 | `machines_dir` | absolute path | `/var/lib/machines` | Where machines are assembled. |
 | `state_dir` | absolute path | `/var/lib/nspawn` | Blobs, layers, records, volumes and everything else nspawn keeps. |
 | `bridge` | string, 1 to 15 letters, digits, `-` or `_` | `nspawn0` | Name of the bridge the machines join. It must be free, or a bridge nspawn made. |
