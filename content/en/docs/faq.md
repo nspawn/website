@@ -66,9 +66,27 @@ and the interface is described in `docs/DBUS.md` of the repository.
 
 ## Are the images signed?
 
-Every blob is verified against the sha256 digest in the image manifest while
-it downloads, and registries are reached over HTTPS only. Signatures of
-manifests are not verified in this version.
+Yes. The workflow that builds the images of the hub, in
+[nspawn/mkosi-definitions](https://github.com/nspawn/mkosi-definitions), signs
+each one twice with [cosign](https://github.com/sigstore/cosign) after pushing
+it: keyless, with the identity of that workflow on `master` (a short-lived
+certificate from Fulcio, recorded in the Rekor transparency log), and with the
+project's key, whose public half is `cosign.pub` in that repository. The
+signatures are stored on the hub next to the image, as OCI referrers of its
+digest, so they cover every tag that points to it, and the hub verifies the
+key one itself and shows the image as signed. To verify an image yourself:
+
+```shell
+cosign verify \
+  --certificate-identity https://github.com/nspawn/mkosi-definitions/.github/workflows/mkosi.yml@refs/heads/master \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  hub.nspawn.org/fedora:44
+```
+
+or, with the key from the repository, `cosign verify --key cosign.pub
+hub.nspawn.org/fedora:44`. Every blob is also checked against the sha256
+digest in the manifest while it downloads, and registries are reached over
+HTTPS only.
 
 ## What happened to the wrapper script and the tar images?
 

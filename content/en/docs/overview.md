@@ -149,6 +149,7 @@ configured by systemd-networkd. See [Networking](/docs/networking/).
   beyond the names on the bridge, no scheduling.
 - It does not build images by itself: `build` needs
   [mkosi](https://github.com/systemd/mkosi) installed on the host.
-- It does not sign or verify signatures of images. Every blob is checked against
-  the sha256 digest in the manifest while it downloads, and registries are
-  reached over HTTPS only.
+- It does not sign images: the hub's are signed by the workflow that builds
+  them (see the [FAQ](/docs/faq/#are-the-images-signed)). Every blob is
+  checked against the sha256 digest in the manifest while it downloads, and
+  registries are reached over HTTPS only.
