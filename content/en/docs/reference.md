@@ -257,7 +257,7 @@ nspawn start NAME [--network NETWORK]... [--network-alias [NETWORK=]NAME]... [-p
              [--restart POLICY] [-m SIZE] [--cpus N] [--pids-limit N]
              [--health-cmd COMMAND] [--health-interval D] [--health-timeout D] [--health-retries N]
              [--health-start-period D] [--health-start-interval D] [--no-healthcheck]
-             [--hostname NAME] [-u USER] [-w DIR] [--cap-add CAP]... [--cap-drop CAP]... [--privileged]
+             [--hostname NAME] [-u USER[:GROUP]] [-w DIR] [--cap-add CAP]... [--cap-drop CAP]... [--privileged]
              [--read-only] [--tmpfs PATH[:OPTIONS]]... [--shm-size SIZE]
              [--device HOST[:CONTAINER[:PERMISSIONS]]]... [--dns ADDRESS]... [--dns-search DOMAIN]...
              [--add-host HOST:IP]... [--ulimit NAME=SOFT[:HARD]]... [--oom-score-adj N]
@@ -269,7 +269,7 @@ Boots an image as a machine. Every option is remembered for the next start.
 
 | Option | Meaning |
 | --- | --- |
-| `--network NETWORK` | Network of the machine: `bridge`, the default network (the default); the name of a network made with [network create](#network-create); `veth`, a veth pair configured by systemd-networkd on the host (booted images only); `host`, the host's own network; or `none`, no interface but `lo`. Repeatable for several bridge networks, the first one primary: its address is where published ports lead and its gateway the default route, unless it is internal, in which case the first network that is not has the route. `veth` and `host` go alone. |
+| `--network NETWORK` | Network of the machine: `bridge`, the default network (the default); the name of a network made with [network create](#network-create); `veth`, a veth pair configured by systemd-networkd on the host (booted images only); `host`, the host's own network; `none`, no interface but `lo`; or `container:NAME`, the network namespace of that running machine, like `docker run --network container:NAME` (app images only; see [container:NAME](/docs/networking/#containername)). Repeatable for several bridge networks, the first one primary: its address is where published ports lead and its gateway the default route, unless it is internal, in which case the first network that is not has the route. `veth`, `host`, `none` and `container:NAME` go alone. |
 | `--network-alias [NETWORK=]NAME` | Another name for the machine on its primary network, or on `NETWORK`, like `docker --network-alias`: every member of that network resolves it. Repeatable; `none` forgets them. |
 | `-p`, `--publish [IP:]HOST:CONTAINER[/udp]` | Publish a port on the host, like `docker -p`: on every address of the host, or on `IP` alone (`127.0.0.1:8080:80`). `8000-8010:8000-8010` publishes a range, one mapping per port. Repeatable; `none` forgets them all. |
 | `--entrypoint PROGRAM` | Replace the image's entrypoint; an empty string runs the arguments alone. App images only. |
@@ -288,7 +288,7 @@ Boots an image as a machine. Every option is remembered for the next start.
 | `--health-start-interval D` | Time between probes during the start period. Default: `5s`. |
 | `--no-healthcheck` | No probes, whatever the image says. |
 | `--hostname NAME` | Hostname inside the machine. Default: its name. A booted machine gets it as its `/etc/hostname`. |
-| `-u`, `--user USER` | User the program runs as, a name or a uid (listed in the image's `passwd` or not), instead of the image's; `uid:gid` is refused. nspawn resolves it from the image's `passwd` and `group` files through a stand-in for getent, as docker does. App images only. |
+| `-u`, `--user USER[:GROUP]` | User the program runs as, a name or a uid (listed in the image's `passwd` or not), instead of the image's, with a group after a colon as docker takes it: a name of the image's `group` file or a number, which becomes the primary and only group of the program; a name the image lacks is refused. nspawn resolves both from the image's `passwd` and `group` files through a stand-in for getent, as docker does. App images only. |
 | `-w`, `--workdir DIR` | Working directory of the program, instead of the image's. App images only. |
 | `--cap-add CAP` | Capability to keep on top of systemd-nspawn's default set: `NET_ADMIN`, `CAP_NET_ADMIN`, `ALL`. Repeatable; `none` forgets them. |
 | `--cap-drop CAP` | Capability to drop from the default set. `--cap-drop ALL --cap-add X` keeps `X`, as with docker. Repeatable; `none` forgets them. |

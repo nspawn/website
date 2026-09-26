@@ -185,9 +185,9 @@ What an app runs is decided exactly as with docker:
   forgets them all, and `exec` sees the same environment as the program. Names
   follow the usual rules (letters, digits and `_`, not starting with a digit).
 - The working directory, the user and the stop signal come from the image
-  unless `-w`, `-u` and `--stop-signal` say otherwise. Of docker's `uid:gid`
-  form of the image's user, the uid part is used; the gid comes from the
-  image's `passwd`, and `-u uid:gid` is refused. The user is resolved as
+  unless `-w`, `-u` and `--stop-signal` say otherwise. docker's `USER:GROUP`
+  form is taken as docker takes it, from the image's config or from `-u`: the
+  group, a name or a number, is the program's primary and only group. The user is resolved as
   docker resolves it, from the image's `passwd` and `group` files: systemd-nspawn
   asks `getent` inside the machine, which busybox lacks and musl's (alpine)
   cannot answer, so nspawn binds a stand-in that answers those lookups and
@@ -353,9 +353,11 @@ its unit:
 - `--hostname NAME`: the hostname inside, the machine's name by default. A
   booted machine gets it as its `/etc/hostname`, over the image's, since its
   systemd sets the hostname from that file.
-- `-u USER` and `-w DIR`: the user (a name or a uid, listed in the image's
-  `passwd` or not; `uid:gid` is refused) and the working directory the
-  program runs with, instead of the image's. App images only.
+- `-u USER[:GROUP]` and `-w DIR`: the user (a name or a uid, listed in the
+  image's `passwd` or not, with a group of the image's `group` file or a gid
+  after a colon, as docker's `--user` takes it; a group name the image lacks
+  is refused) and the working directory the program runs with, instead of the
+  image's. App images only.
 - `--cap-add`, `--cap-drop` and `--privileged`: capabilities on top of, or
   out of, systemd-nspawn's default set (`NET_ADMIN` or `CAP_NET_ADMIN`;
   `ALL`). `--cap-drop ALL --cap-add NET_BIND_SERVICE` keeps that one, as with
@@ -438,7 +440,8 @@ registers, libvirt's among them, are left out); machines that nspawn did not
 install show `-` in the image columns. `-a` adds the nspawn machines that are
 not running. `COMMAND` is the effective entrypoint and arguments of an app,
 and `NETWORK` the machine's address on the default network, its other networks
-as `NAME:ADDRESS`, and the published ports, or `host`, `veth` or `none`. A
+as `NAME:ADDRESS`, and the published ports, or `host`, `veth`, `none` or
+`container:NAME`. A
 machine between two runs of its restart policy is listed as `restarting` even
 without `-a`, a frozen one as `paused`, and a healthcheck follows the state:
 `running (healthy)`.

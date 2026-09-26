@@ -16,6 +16,7 @@ and the choice sticks for the next start.
 | a network's name | | The same on a bridge of its own, made with `network create`; several at once, with `--network` repeated: see [Networks of your own](#networks-of-your-own). |
 | `host` | | The host's network namespace, like `docker run --network host`: the machine sees the host's interfaces and binds to the host's ports. Works for both kinds of image. |
 | `none` | | No network at all, like `docker run --network none`: `lo` and nothing else. Works for both kinds of image. |
+| `container:NAME` | | The network namespace of the running machine `NAME`, like `docker run --network container:NAME`: its interfaces, address, hosts file and resolv.conf, nothing of the machine's own. App images only; see [container:NAME](#containername). |
 | `veth` | Images not installed by nspawn | The classic systemd-nspawn setup: a virtual ethernet pair whose host end is configured by systemd-networkd through the stock `80-container-ve.network`. Booted images only. |
 
 ## The bridge
@@ -239,3 +240,32 @@ namespace.
 `--network none` sets `Private=yes`: the machine has `lo` and nothing else,
 like `docker run --network none`. Published ports do not apply, and an app that
 runs this way keeps its user namespace too.
+
+## container:NAME
+
+`--network container:NAME` puts an app machine in the network namespace of the
+machine `NAME`, docker's sidecar pattern (a VPN client with the programs that
+must go through it, for one): the same interfaces and address, `NAME`'s hosts
+and resolv.conf files, and nothing of the machine's own. A port the program
+serves is published with `-p` on `NAME`, since that is where the address is.
+`NAME` can be an app or a booted machine on any bridge network, has to be
+running when the machine starts, and cannot be removed while a machine names
+it. When `NAME` stops or restarts, the machine keeps the namespace it joined,
+which then leads nowhere, and has to be restarted to join the new one, as with
+docker.
+
+```shell
+sudo nspawn run -d docker.io/qmcgaw/gluetun --name vpn --cap-add NET_ADMIN --device /dev/net/tun -p 8080:8080
+sudo nspawn run -d docker.io/library/nginx:1.27 --name web --network container:vpn
+```
+
+Behind the scenes the service binds the name systemd-nspawn looks for
+(`/run/netns/nspawn-web`) to the network namespace of `vpn`'s leader process,
+the mount `ip netns attach` would make, so the settings are the ones of any
+app on a bridge, and drops the name when `web` stops while the namespace
+stays `vpn`'s. `-p`,
+`--network-alias`, `--dns`, `--dns-search`, `--add-host` and `--sysctl` are
+refused on such a machine, since they shape a network of its own, and so is a
+booted image, whose systemd would configure the shared interfaces again. `ps`
+and `inspect` show the network as `container:NAME`; `network inspect` does not
+list the machine among the network's members, as it has no address there.
