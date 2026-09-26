@@ -204,8 +204,8 @@ nspawn images rm NAME...
 ```
 
 Removes local images and the layers and blobs nobody uses any more. Refuses
-the image of a running machine, or of one its restart policy is bringing back.
-Named volumes are kept. A pulled image is a machine too, so this is the same as
+the image of a running machine, or of one its restart policy is bringing back,
+and a name nothing is behind. Named volumes are kept. A pulled image is a machine too, so this is the same as
 [rm](#rm) without `--force`.
 
 ## rm
@@ -216,8 +216,9 @@ nspawn rm [-f] NAME...
 
 Removes machines, like `docker rm`: the record, the tree, the unit files, the
 boot link a restart policy made, and the layers and blobs nobody else uses.
-Every name is tried; one that cannot be removed is reported at the end. Named
-volumes are kept, and each one kept is mentioned.
+Every name is tried; one that cannot be removed, or that nothing is behind
+(`no machine or image named NAME`), is reported at the end. Named volumes are
+kept, and each one kept is mentioned.
 
 | Option | Meaning |
 | --- | --- |

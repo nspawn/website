@@ -62,7 +62,11 @@ objects that report their output. The bus starts the service when a command arri
 after a minute without work, so nothing of nspawn's runs in the background
 otherwise. A package installs it; for a binary you built yourself,
 `sudo nspawn daemon --install`. Its journal is `journalctl -u nspawn.service`,
-and the interface is described in `docs/DBUS.md` of the repository.
+and the interface is described in `docs/DBUS.md` of the repository. After an
+upgrade the service keeps running the binary it started with until it goes
+idle or is restarted; a command of another version says so and asks for
+`sudo systemctl restart nspawn.service` (the rpm and the deb restart it
+themselves).
 
 ## Are the images signed?
 
