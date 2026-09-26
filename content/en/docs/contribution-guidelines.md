@@ -11,7 +11,7 @@ nspawn is developed on GitHub under the [nspawn organization](https://github.com
 | --- | --- |
 | [nspawn](https://github.com/nspawn/nspawn) | The tool (Rust). |
 | [mkosi-definitions](https://github.com/nspawn/mkosi-definitions) | The mkosi configuration of the images on the hub. |
-| [website](https://github.com/nspawn/website) | This site. |
+| [nspawn.org](https://github.com/nspawn/nspawn.org) | This site. |
 | [nspawn.github.io](https://github.com/nspawn/nspawn.github.io) | The [blog](https://blog.nspawn.org/). |
 
 Issues and pull requests are welcome in all of them. The
@@ -77,8 +77,8 @@ The site is built with [Hugo](https://gohugo.io/) and the
 needs nothing else:
 
 ```shell
-git clone https://github.com/nspawn/website.git
-cd website
+git clone https://github.com/nspawn/nspawn.org.git
+cd nspawn.org
 docker compose up
 ```
 

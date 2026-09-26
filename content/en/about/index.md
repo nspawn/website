@@ -26,7 +26,7 @@ small wrapper script. Today it is an OCI registry, `hub.nspawn.org`, and
 command line. Everything is open: the
 [tool](https://github.com/nspawn/nspawn), the
 [image definitions](https://github.com/nspawn/mkosi-definitions) and
-[this site](https://github.com/nspawn/website).
+[this site](https://github.com/nspawn/nspawn.org).
 
 ## The team
 

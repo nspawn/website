@@ -142,5 +142,5 @@ For questions, `#nspawn-org` on [Matrix](https://matrix.to/#/#nspawn-org:matrix.
 or on [Libera.Chat](https://web.libera.chat/#nspawn-org). For bugs, the issues
 of [github.com/nspawn/nspawn](https://github.com/nspawn/nspawn/issues) for the
 tool, [mkosi-definitions](https://github.com/nspawn/mkosi-definitions/issues)
-for the images, and [website](https://github.com/nspawn/website/issues) for
+for the images, and [nspawn.org](https://github.com/nspawn/nspawn.org/issues) for
 this site.
