@@ -74,7 +74,15 @@ certificate from Fulcio, recorded in the Rekor transparency log), and with the
 project's key, whose public half is `cosign.pub` in that repository. The
 signatures are stored on the hub next to the image, as OCI referrers of its
 digest, so they cover every tag that points to it, and the hub verifies the
-key one itself and shows the image as signed. To verify an image yourself:
+key one itself and shows the image as signed.
+
+`nspawn pull` verifies them too, since 1.5.0: before a single layer is
+downloaded, one of the two signatures has to verify offline against the
+project's key and the workflow's identity, both built into nspawn, and an
+image without a valid signature is refused (`--no-verify` skips the check for
+one command; see [Signed images](/docs/images/#signed-images)). Other
+registries get a [policy in the configuration](/docs/configuration/#signature-policies).
+To verify an image yourself, with cosign:
 
 ```shell
 cosign verify \

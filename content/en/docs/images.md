@@ -115,15 +115,60 @@ Docker Hub limits anonymous pulls per address; logging in lifts that. `push`
 authenticates before it uploads anything and, when the registry wants
 credentials it does not have, says which `login` to run.
 
+## Signed images
+
+Every image on the hub is signed twice by the workflow that builds it
+([nspawn/mkosi-definitions](https://github.com/nspawn/mkosi-definitions)) with
+cosign: with the project's key, whose public half (`cosign.pub` in that
+repository) is built into nspawn, and keyless, with the workflow's own identity
+through Sigstore
+(`https://github.com/nspawn/mkosi-definitions/.github/workflows/mkosi.yml@refs/heads/master`,
+issued by GitHub). The signatures are referrers of the image on the registry:
+Sigstore bundles that carry the certificate or the key's hint, the transparency
+log entry and a timestamp, so `pull` verifies them offline, with nothing but the
+registry consulted, against the Sigstore trusted root the binary embeds. One of
+the two has to verify, and the check comes before a single layer is downloaded:
+
+```text
+$ sudo nspawn pull fedora:44
+hub.nspawn.org/fedora:44: signature verified (key 6wiWMtJZCUkV, keyless https://github.com/nspawn/mkosi-definitions/.github/workflows/mkosi.yml@refs/heads/master)
+hub.nspawn.org/fedora:44: manifest 9240778b2c77 with 1 layer(s), assembling as overlay
+...
+```
+
+An image without a signature (a tag dated before the signing began, or one
+pushed by hand with `nspawn push`) is refused with `carries no signature`, and
+so is one whose signatures do not verify, with the reason of each. `--no-verify`
+on `pull`, `run` and `create` skips the check for that command, like docker's
+`--disable-content-trust`; `create` checks only an image it has to pull, never
+a local source. `inspect` shows who signed (`signed_by`: `key <hint>, keyless
+<identity>`) and when (`signed_at`), which a machine made with `create`
+inherits from its source.
+
+Images of other registries are pulled unverified until the
+[configuration file](/docs/configuration/#signature-policies) says what they
+must carry, one table per registry; the same table can require other keys of
+the hub, or turn its check off:
+
+```toml
+[registries."hub.nspawn.org"]
+verify = false
+```
+
+The policies belong to the service: `--registry` on the command line chooses
+the registry, never the policy.
+
 ## Pulling
 
 ```shell
-sudo nspawn pull REFERENCE [--name NAME] [--backend BACKEND] [--mode MODE] [--force]
+sudo nspawn pull REFERENCE [--name NAME] [--backend BACKEND] [--mode MODE] [--force] [--no-verify]
 ```
 
 It resolves the reference to the manifest for the host's
-platform (image indexes are followed), downloads every layer and the config
-blob that is not already in the store, three at a time as docker does, checking
+platform (image indexes are followed), checks the image's signatures where its
+registry has a policy (the hub's is built in; see
+[Signed images](#signed-images)) before anything is downloaded, downloads every
+layer and the config blob that is not already in the store, three at a time as docker does, checking
 each one against its sha256 digest while it streams (a blob is written next to
 its final name and renamed only once verified, so an interrupted download never
 passes for a complete one, and a download cut short takes its part file with
@@ -136,7 +181,7 @@ it), says of each blob when it is downloaded, and then:
    with, and the drop-in that makes `systemd-nspawn@NAME.service` call nspawn
    around its life;
 4. records the image (reference, manifest digest, layers, backend, mode,
-   network) under `/var/lib/nspawn`, and keeps the manifest and blobs so that
+   network, who signed it) under `/var/lib/nspawn`, and keeps the manifest and blobs so that
    the image can be pushed or cloned later.
 
 An image with the same name is not replaced unless you pass `--force`, and

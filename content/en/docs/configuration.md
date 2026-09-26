@@ -52,6 +52,41 @@ dns = ["172.30.5.1", "9.9.9.9"]
 Changing `bridge` or `subnet` affects machines started afterwards; the address
 recorded for a machine is reassigned from the new subnet on its next start.
 
+## Signature policies
+
+What the images of a registry must carry, one table per registry (host, or
+host:port). The hub's policy is built in (the project's key or the build
+workflow's keyless identity, one of them required, its transparency log entry
+checked): a table for `hub.nspawn.org` replaces it, and `verify = false` turns
+the check off. Every other registry is verified only when it has a table.
+
+```toml
+[registries."registry.example.com"]
+key = "/etc/nspawn/keys/example.pub"      # a cosign public key (PEM); keys = [...] for several
+identity = "https://github.com/org/repo/.github/workflows/build.yml@refs/heads/main"
+issuer = "https://token.actions.githubusercontent.com"   # goes with identity
+required = true            # default: no verifying signature fails the pull
+rekor = true               # default: the signature's transparency log entry must verify
+trusted_root = "/etc/nspawn/trusted_root.json"   # another Sigstore deployment; the public one otherwise
+
+[registries."hub.nspawn.org"]
+verify = false             # nothing is checked for this registry
+```
+
+| Key | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `verify` | boolean | `true` | `false` turns verification off for the registry, the hub's built-in policy included. |
+| `key`, `keys` | absolute path, list of absolute paths | none | Cosign public keys (PEM) the images may be signed with; `key` and `keys` add up. |
+| `identity`, `issuer` | strings, both or neither | none | A keyless signer: the certificate's identity (the SAN, a URI or an email) and the issuer of the token behind it. A table names at least one key or an identity, unless `verify = false`. |
+| `required` | boolean | `true` | `false` turns a missing signature into a note and lets the pull go on; a signature that is there but does not verify still fails it. |
+| `rekor` | boolean | `true` | `false` trusts the key or certificate alone, without the transparency log entry (a private deployment that keeps no log). A bundle still has to carry a log entry or a timestamp, which cosign always adds. |
+| `trusted_root` | absolute path | the public Sigstore root the binary embeds | The `trusted_root.json` of another Sigstore deployment. |
+
+The keys are read by the service when a pull needs them, and checked when it
+starts: a key or a trusted root it cannot read is reported in its journal and
+fails the pulls of that registry. What the command line was given with
+`--registry` chooses the registry, never the policy.
+
 The file is read by the service, so a change takes effect on its next start:
 `sudo systemctl restart nspawn.service` (or simply waiting for it to go idle)
 picks it up. `--config` on the command line does not reach it: the command line
