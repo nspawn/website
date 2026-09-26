@@ -97,10 +97,12 @@ Forgets the credentials stored for a registry (the hub by default).
 ## pull
 
 ```text
-nspawn pull REFERENCE [-n NAME] [--backend BACKEND] [--mode MODE] [-f]
+nspawn pull REFERENCE [-n NAME] [--backend BACKEND] [--mode MODE] [-f] [--no-verify]
 ```
 
-Downloads an image from the hub or another registry and makes it available to
+Downloads an image from the hub or another registry, checking its signature
+first where the registry has a policy (the hub's is built in; see
+[Signed images](/docs/images/#signed-images)), and makes it available to
 systemd-machined. On a terminal a bar shows how far each blob got, with its
 size, speed and time left; in a pipe or a log only the lines are written.
 
@@ -111,6 +113,7 @@ size, speed and time left; in a pipe or a log only the lines are written.
 | `--backend auto\|overlay\|flat\|mstack` | How to assemble the image on this host. Default: `auto`, or the `backend` of the configuration file: `overlay`, or `flat` without overlayfs. `mstack` (systemd 261 or newer, managed user namespaces) is experimental. App images are assembled as `overlay` even when `mstack` is chosen. |
 | `--mode auto\|boot\|app` | Whether the image boots an init system or runs a single program. Default: `auto`. |
 | `-f`, `--force` | Replace an existing image with the same name. |
+| `--no-verify` | Skip the signature check: the hub's images are signed and refused without a valid signature, and the configuration can ask the same of other registries; like docker's `--disable-content-trust`. |
 
 ## create
 
@@ -119,7 +122,7 @@ nspawn create SOURCE NAME [--backend BACKEND] [--network NETWORK]... [--network-
               [-p [IP:]HOST:CONTAINER[/udp]]... [--entrypoint PROGRAM] [-e VAR[=VALUE]]...
               [-v SOURCE:TARGET[:ro]]... [-l KEY=VALUE]... [--restart POLICY] [-m SIZE] [--cpus N]
               [--pids-limit N] [HEALTHCHECK OPTIONS] [OTHER OPTIONS] [--secret SECRET]...
-              [-f] [-- ARGUMENTS...]
+              [-f] [--no-verify] [-- ARGUMENTS...]
 ```
 
 Makes another machine from a local image, like `docker create`, without
@@ -141,6 +144,7 @@ the image's own name, as `run` does. The layers are shared with the source.
 | `--restart`, `-m`, `--cpus`, `--pids-limit` | Restart policy and limits, as for [start](#start). Not inherited from the source. |
 | the healthcheck options, the other options, `--secret` | As for [start](#start). Not inherited from the source. |
 | `-f`, `--force` | Replace an existing machine with the same name. |
+| `--no-verify` | Skip the signature check of an image that has to be pulled (a local source is not checked); like docker's `--disable-content-trust`. |
 | `-- ARGUMENTS...` | App images: replace the image's cmd; they follow its entrypoint, as with docker. |
 
 ## build
@@ -243,9 +247,10 @@ nspawn inspect NAME...
 Prints everything nspawn knows about machines or images, running or not, as a
 JSON array with one object per name, like `docker inspect`: the record (image
 reference, digest, backend, mode, networks, addresses, aliases, ports, volumes,
-environment, command, labels, restart policy, limits, healthcheck, secrets and
-the other flags), for a running machine its state, start time, leader PID, OS
-and health, and for a stopped one the exit code of its last run. The keys are
+environment, command, labels, restart policy, limits, healthcheck, secrets,
+the other flags, and who signed the image and when, as the pull verified it:
+`signed_by`, `signed_at`), for a running machine its state, start time, leader
+PID, OS and health, and for a stopped one the exit code of its last run. The keys are
 those of the
 [D-Bus interface](https://github.com/nspawn/nspawn/blob/master/docs/DBUS.md).
 
@@ -315,7 +320,7 @@ Boots an image as a machine. Every option is remembered for the next start.
 
 ```text
 nspawn run [-d] [--rm] [-i] [-t] [-n NAME] [--pull missing|always|never]
-           [--backend BACKEND] [--mode MODE] [-f] [OPTIONS OF start] [--no-wait]
+           [--backend BACKEND] [--mode MODE] [-f] [--no-verify] [OPTIONS OF start] [--no-wait]
            REFERENCE [COMMAND [ARGUMENT...]]
 ```
 
@@ -346,6 +351,7 @@ image shows its console until it powers off, and Ctrl-C powers it off.
 | `--backend auto\|overlay\|flat\|mstack` | How to assemble the machine, as for `pull`. |
 | `--mode auto\|boot\|app` | As for `pull`; a mode other than `auto` always pulls. |
 | `-f`, `--force` | Make the machine anew when one of that name exists; it must be stopped. |
+| `--no-verify` | Skip the signature check of the image, as for `pull`. |
 | the options of `start` | `--network`, `--network-alias`, `-p`, `--entrypoint`, `-e`, `-v`, `-l`, `--restart`, `-m`, `--cpus`, `--pids-limit`, the healthcheck options, the other options, `--secret` and `--no-wait` (with `-d` only), as for [start](#start). Options may come before or after the reference, as long as they come before the command. |
 
 ## stop

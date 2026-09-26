@@ -99,13 +99,18 @@ sudo nspawn pull fedora:44
 ```
 
 ```text
-hub.nspawn.org/fedora:44: manifest 3f9c1a2b4d5e with 1 layer(s), assembling as overlay
-blob 8a1e0c7f3b92: downloading
-blob c0de4455aa01: downloading
+hub.nspawn.org/fedora:44: signature verified (key 6wiWMtJZCUkV, keyless https://github.com/nspawn/mkosi-definitions/.github/workflows/mkosi.yml@refs/heads/master)
+hub.nspawn.org/fedora:44: manifest 9240778b2c77 with 1 layer(s), assembling as overlay
+blob f0c1e88e32b3: downloading
+blob 28edf9a59c17: downloading
+blob f0c1e88e32b3: downloaded
+blob 28edf9a59c17: downloaded
 image fedora-44 (boot image) is ready: nspawn start fedora-44
 ```
 
-The blobs went to `/var/lib/nspawn`, the root file system of the machine is
+The image's signature was checked first (every image on the hub is signed by
+the workflow that builds it; see [Signed images](/docs/images/#signed-images)),
+then the blobs went to `/var/lib/nspawn`, the root file system of the machine is
 mounted at `/var/lib/machines/fedora-44`, `/etc/systemd/nspawn/fedora-44.nspawn`
 holds the settings nspawn boots it with, and a drop-in of
 `systemd-nspawn@fedora-44.service` makes the unit call nspawn around its life.

@@ -18,7 +18,8 @@ machines with a docker-like workflow:
   [mkosi](https://github.com/systemd/mkosi). Docker Hub and any other registry
   work as well: `search` looks on the hub and on Docker Hub at once, and
   `login` keeps credentials per registry, the way `docker login` does.
-- Layers are downloaded once, verified against their digests and shared between
+- An image of the hub is verified against its signature before anything comes
+  down; layers are downloaded once, verified against their digests and shared between
   the machines that use them. A machine's root file system is assembled from
   them by a [backend](/docs/images/#backends): an overlayfs mount, a native
   `systemd.mstack` directory, or a flat copy. `create` makes more machines from
@@ -150,6 +151,7 @@ configured by systemd-networkd. See [Networking](/docs/networking/).
 - It does not build images by itself: `build` needs
   [mkosi](https://github.com/systemd/mkosi) installed on the host.
 - It does not sign images: the hub's are signed by the workflow that builds
-  them (see the [FAQ](/docs/faq/#are-the-images-signed)). Every blob is
-  checked against the sha256 digest in the manifest while it downloads, and
-  registries are reached over HTTPS only.
+  them, and `pull` verifies one of those signatures before it downloads
+  anything (see [Signed images](/docs/images/#signed-images)). Every blob is
+  then checked against the sha256 digest in the manifest while it downloads,
+  and registries are reached over HTTPS only.
