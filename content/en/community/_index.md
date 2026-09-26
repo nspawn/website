@@ -20,7 +20,7 @@ and "does this work on my distribution" all fit there.
 Bug reports go to the issues of the repository they belong to:
 [nspawn](https://github.com/nspawn/nspawn/issues) for the tool,
 [mkosi-definitions](https://github.com/nspawn/mkosi-definitions/issues) for
-the images on the hub, and [website](https://github.com/nspawn/website/issues)
+the images on the hub, and [nspawn.org](https://github.com/nspawn/nspawn.org/issues)
 for this site. When you report a problem with a machine, the output of
 `nspawn ps`, `nspawn logs NAME --all` and `systemctl --version` usually tells
 most of the story.

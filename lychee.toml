@@ -16,8 +16,8 @@ exclude = [
   # Docsy page-meta links
   '^https?://github\.com/.*?/.*?/(new|edit)/',            # view/edit-source links
   '^https://github\.com/[^/]+/[^/]+/issues/new',          # per-page "create issue" links
-  '^https://github\.com/nspawn/website/commit/',          # per-page provenance links
-  '^https://github\.com/nspawn/website/tree/main/content/',
+  '^https://github\.com/nspawn/nspawn\.org/commit/',          # per-page provenance links
+  '^https://github\.com/nspawn/nspawn\.org/tree/main/content/',
 
   # The hub is an OCI registry, not a web site: it answers on /v2/ only.
   '^https://hub\.nspawn\.org',

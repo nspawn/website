@@ -2,11 +2,11 @@
   "name": "nspawn-website",
   "version": "0.17.0",
   "description": "nspawn.org: documentation and landing page for nspawn, built with Hugo and Docsy.",
-  "repository": "github:nspawn/website",
+  "repository": "github:nspawn/nspawn.org",
   "homepage": "https://nspawn.org",
   "author": "The nspawn.org team",
   "license": "Apache-2.0",
-  "bugs": "https://github.com/nspawn/website/issues",
+  "bugs": "https://github.com/nspawn/nspawn.org/issues",
   "workspaces": [
     "packages/hugoautogen"
   ],

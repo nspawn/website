@@ -57,7 +57,7 @@ params:
   archived_version: false
 
   # In-page links to open issues and suggest changes.
-  github_repo: https://github.com/nspawn/website
+  github_repo: https://github.com/nspawn/nspawn.org
   # The sibling repository where the product code lives.
   github_project_repo: https://github.com/nspawn/nspawn
   github_branch: main
@@ -125,7 +125,7 @@ params:
         icon: fa fa-cubes
         desc: How the images on the hub are built.
       - name: This website
-        url: https://github.com/nspawn/website
+        url: https://github.com/nspawn/nspawn.org
         icon: fa fa-globe
         desc: Fix a typo or add a page.
 

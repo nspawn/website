@@ -1,7 +1,7 @@
 # Contributing
 
 Fixes and new pages are welcome as pull requests to
-[nspawn/website](https://github.com/nspawn/website). Every documentation page
+[nspawn/nspawn.org](https://github.com/nspawn/nspawn.org). Every documentation page
 has an "Edit this page" link that opens the right file on GitHub; for anything
 bigger, clone the repository and preview it locally as described in
 [README.md](README.md).
