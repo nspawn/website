@@ -123,10 +123,11 @@ sudo nspawn pull REFERENCE [--name NAME] [--backend BACKEND] [--mode MODE] [--fo
 
 It resolves the reference to the manifest for the host's
 platform (image indexes are followed), downloads every layer and the config
-blob that is not already in the store, checking each one against its sha256
-digest while it streams (a blob is written next to its final name and renamed
-only once verified, so an interrupted download never passes for a complete
-one), and then:
+blob that is not already in the store, three at a time as docker does, checking
+each one against its sha256 digest while it streams (a blob is written next to
+its final name and renamed only once verified, so an interrupted download never
+passes for a complete one, and a download cut short takes its part file with
+it), says of each blob when it is downloaded, and then:
 
 1. assembles the root file system with the chosen [backend](#backends);
 2. reads the OCI config and decides whether the image is a
